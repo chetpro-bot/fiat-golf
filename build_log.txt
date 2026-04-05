@@ -1,0 +1,436 @@
+﻿Compiling lib\main.dart for the Web...                          
+flutter : Wasm dry run succeeded. Consid
+er building and testing your application
+ with the `--wasm` flag. See docs for mo
+re info: https://docs.flutter.dev/platfo
+rm-integration/web/wasm
+위치 줄:1 문자:1
++ flutter build web 2>&1 | Out-File -Enc
+oding utf8 build_log.txt
++ ~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecifi
+ed    : (Wasm dry run su...ration/web/wa
+sm:S    tring) [], RemoteException
+    + FullyQualifiedErrorId : NativeComm
+an    dError
+ 
+Use --no-wasm-dry-run to disable these w
+arnings.
+Target dart2js failed: ProcessException:
+ Process exited abnormally with exit cod
+e 1:
+lib/screens/course_list_screen.dart:5:32
+:
+Error: Type 'StatelessWidget' not found.
+class CourseListScreen extends Stateless
+Widget {
+                               ^^^^^^^^^
+^^^^^^
+lib/screens/course_list_screen.dart:9:3:
+Error: Type 'Widget' not found.
+  Widget build(BuildContext context) {
+  ^^^^^^
+lib/screens/course_list_screen.dart:9:16
+:
+Error: Type 'BuildContext' not found.
+  Widget build(BuildContext context) {
+               ^^^^^^^^^^^^
+lib/screens/dashboard_screen.dart:42:63:
+Error: A value of type 'CourseListScreen
+' can't be returned from a function with
+ return type 'Widget'.
+ - 'CourseListScreen' is from 'package:g
+olf_score/screens/course_list_screen.dar
+t' ('lib/screens/course_list_screen.dart
+').
+ - 'Widget' is from 'package:flutter/src
+/widgets/framework.dart' ('/C:/Users/USE
+R/Downloads/flutter_windows_3.41.5-stabl
+e/flutter/packages/flutter/lib/src/widge
+ts/framework.dart').
+                MaterialPageRoute(builde
+r: (context) => const CourseListScreen()
+),
+                                        
+                      ^
+lib/screens/course_list_screen.dart:9:16
+:
+Error: 'BuildContext' isn't a type.
+  Widget build(BuildContext context) {
+               ^^^^^^^^^^^^
+lib/screens/course_list_screen.dart:12:2
+2:
+Error: Not a constant expression.
+        title: const Text('?ⓥ뫂遊???온??),
+                     ^^^^
+lib/screens/course_list_screen.dart:22:4
+0:
+Error: Not a constant expression.
+            return const Center(child: C
+ircularProgressIndicator());
+                                       ^
+^^^^^^^^^^^^^^^^^^^^^^^^
+lib/screens/course_list_screen.dart:22:2
+6:
+Error: Not a constant expression.
+            return const Center(child: C
+ircularProgressIndicator());
+                         ^^^^^^
+lib/screens/course_list_screen.dart:25:9
+2:
+Error: Not a constant expression.
+            return const Center(child: T
+ext('?源낆쨯???ⓥ뫂遊?關????곷뮸??덈뼄.\n??덉쨮???ⓥ뫂遊
+?關???곕떽?????紐꾩뒄.', textAlign: TextAlign
+.center));
+                                        
+                                        
+          ^^^^^^^^^
+lib/screens/course_list_screen.dart:25:4
+0:
+Error: Not a constant expression.
+            return const Center(child: T
+ext('?源낆쨯???ⓥ뫂遊?關????곷뮸??덈뼄.\n??덉쨮???ⓥ뫂遊
+?關???곕떽?????紐꾩뒄.', textAlign: TextAlign
+.center));
+                                       ^
+^^^
+lib/screens/course_list_screen.dart:25:2
+6:
+Error: Not a constant expression.
+            return const Center(child: T
+ext('?源낆쨯???ⓥ뫂遊?關????곷뮸??덈뼄.\n??덉쨮???ⓥ뫂遊
+?關???곕떽?????紐꾩뒄.', textAlign: TextAlign
+.center));
+                         ^^^^^^
+lib/screens/course_list_screen.dart:42:3
+1:
+Error: Couldn't find constructor 'EdgeIn
+sets.symmetric'.
+                margin: const EdgeInsets
+.symmetric(horizontal: 16, vertical: 8),
+                              ^^^^^^^^^^
+lib/screens/course_list_screen.dart:44:7
+2:
+Error: Not a constant expression.
+                  title: Text(name, styl
+e: const TextStyle(fontWeight: FontWeigh
+t.bold)),
+                                        
+                               ^^^^^^^^^
+^
+lib/screens/course_list_screen.dart:44:5
+0:
+Error: Not a constant expression.
+                  title: Text(name, styl
+e: const TextStyle(fontWeight: FontWeigh
+t.bold)),
+                                        
+         ^^^^^^^^^
+lib/screens/course_list_screen.dart:46:4
+0:
+Error: Not a constant expression.
+                  trailing: const Icon(I
+cons.edit, size: 20, color: Colors.blue)
+,
+                                       ^
+^^^^
+lib/screens/course_list_screen.dart:46:6
+9:
+Error: Not a constant expression.
+                  trailing: const Icon(I
+cons.edit, size: 20, color: Colors.blue)
+,
+                                        
+                            ^^^^^^
+lib/screens/course_list_screen.dart:46:3
+5:
+Error: Not a constant expression.
+                  trailing: const Icon(I
+cons.edit, size: 20, color: Colors.blue)
+,
+                                  ^^^^
+lib/screens/course_list_screen.dart:77:2
+7:
+Error: Not a constant expression.
+        child: const Icon(Icons.add),
+                          ^^^^^
+lib/screens/course_list_screen.dart:77:2
+2:
+Error: Not a constant expression.
+        child: const Icon(Icons.add),
+                     ^^^^
+lib/screens/course_list_screen.dart:13:2
+6:
+Error: The getter 'Theme' isn't defined 
+for the type 'CourseListScreen'.
+ - 'CourseListScreen' is from 'package:g
+olf_score/screens/course_list_screen.dar
+t' ('lib/screens/course_list_screen.dart
+').
+        backgroundColor: Theme.of(contex
+t).colorScheme.inversePrimary,
+                         ^^^^^
+lib/screens/course_list_screen.dart:11:1
+5:
+Error: The method 'AppBar' isn't defined
+ for the type 'CourseListScreen'.
+ - 'CourseListScreen' is from 'package:g
+olf_score/screens/course_list_screen.dar
+t' ('lib/screens/course_list_screen.dart
+').
+      appBar: AppBar(
+              ^^^^^^
+lib/screens/course_list_screen.dart:21:4
+3:
+Error: The getter 'ConnectionState' isn'
+t defined for the type 'CourseListScreen
+'.
+ - 'CourseListScreen' is from 'package:g
+olf_score/screens/course_list_screen.dar
+t' ('lib/screens/course_list_screen.dart
+').
+          if (snapshot.connectionState =
+= ConnectionState.waiting) {
+                                        
+  ^^^^^^^^^^^^^^^
+lib/screens/course_list_screen.dart:30:1
+8:
+Error: The getter 'ListView' isn't defin
+ed for the type 'CourseListScreen'.
+ - 'CourseListScreen' is from 'package:g
+olf_score/screens/course_list_screen.dar
+t' ('lib/screens/course_list_screen.dart
+').
+          return ListView.builder(
+                 ^^^^^^^^
+lib/screens/course_list_screen.dart:44:2
+6:
+Error: The method 'Text' isn't defined f
+or the type 'CourseListScreen'.
+ - 'CourseListScreen' is from 'package:g
+olf_score/screens/course_list_screen.dar
+t' ('lib/screens/course_list_screen.dart
+').
+                  title: Text(name, styl
+e: const TextStyle(fontWeight: FontWeigh
+t.bold)),
+                         ^^^^
+lib/screens/course_list_screen.dart:45:2
+9:
+Error: The method 'Text' isn't defined f
+or the type 'CourseListScreen'.
+ - 'CourseListScreen' is from 'package:g
+olf_score/screens/course_list_screen.dar
+t' ('lib/screens/course_list_screen.dart
+').
+                  subtitle: Text(courseN
+ames.isNotEmpty ? '?源낆쨯???꾨뗄?? $courseNa
+mes$bestScoreDisplay' : '?源낆쨯???紐? ?꾨뗄??
+??곸벉$bestScoreDisplay'),
+                            ^^^^
+lib/screens/course_list_screen.dart:48:2
+1:
+Error: The getter 'Navigator' isn't defi
+ned for the type 'CourseListScreen'.
+ - 'CourseListScreen' is from 'package:g
+olf_score/screens/course_list_screen.dar
+t' ('lib/screens/course_list_screen.dart
+').
+                    Navigator.push(
+                    ^^^^^^^^^
+lib/screens/course_list_screen.dart:50:2
+3:
+Error: The method 'MaterialPageRoute' is
+n't defined for the type 'CourseListScre
+en'.
+ - 'CourseListScreen' is from 'package:g
+olf_score/screens/course_list_screen.dar
+t' ('lib/screens/course_list_screen.dart
+').
+                      MaterialPageRoute(
+                      ^^^^^^^^^^^^^^^^^
+lib/screens/course_list_screen.dart:43:2
+4:
+Error: The method 'ListTile' isn't defin
+ed for the type 'CourseListScreen'.
+ - 'CourseListScreen' is from 'package:g
+olf_score/screens/course_list_screen.dar
+t' ('lib/screens/course_list_screen.dart
+').
+                child: ListTile(
+                       ^^^^^^^^
+lib/screens/course_list_screen.dart:41:2
+2:
+Error: The method 'Card' isn't defined f
+or the type 'CourseListScreen'.
+ - 'CourseListScreen' is from 'package:g
+olf_score/screens/course_list_screen.dar
+t' ('lib/screens/course_list_screen.dart
+').
+              return Card(
+                     ^^^^
+lib/screens/course_list_screen.dart:15:1
+3:
+Error: The method 'StreamBuilder' isn't 
+defined for the type 'CourseListScreen'.
+ - 'CourseListScreen' is from 'package:g
+olf_score/screens/course_list_screen.dar
+t' ('lib/screens/course_list_screen.dart
+').
+      body: StreamBuilder<QuerySnapshot>
+(
+            ^^^^^^^^^^^^^
+lib/screens/course_list_screen.dart:69:1
+1:
+Error: The getter 'Navigator' isn't defi
+ned for the type 'CourseListScreen'.
+ - 'CourseListScreen' is from 'package:g
+olf_score/screens/course_list_screen.dar
+t' ('lib/screens/course_list_screen.dart
+').
+          Navigator.push(
+          ^^^^^^^^^
+lib/screens/course_list_screen.dart:71:1
+3:
+Error: The method 'MaterialPageRoute' is
+n't defined for the type 'CourseListScre
+en'.
+ - 'CourseListScreen' is from 'package:g
+olf_score/screens/course_list_screen.dar
+t' ('lib/screens/course_list_screen.dart
+').
+            MaterialPageRoute(
+            ^^^^^^^^^^^^^^^^^
+lib/screens/course_list_screen.dart:67:2
+9:
+Error: The method 'FloatingActionButton'
+ isn't defined for the type 'CourseListS
+creen'.
+ - 'CourseListScreen' is from 'package:g
+olf_score/screens/course_list_screen.dar
+t' ('lib/screens/course_list_screen.dart
+').
+      floatingActionButton: FloatingActi
+onButton(
+                            ^^^^^^^^^^^^
+^^^^^^^^
+lib/screens/course_list_screen.dart:10:1
+2:
+Error: The method 'Scaffold' isn't defin
+ed for the type 'CourseListScreen'.
+ - 'CourseListScreen' is from 'package:g
+olf_score/screens/course_list_screen.dar
+t' ('lib/screens/course_list_screen.dart
+').
+    return Scaffold(
+           ^^^^^^^^
+Error: Compilation failed.
+  Command: C:\Users\USER\Downloads\flutt
+er_windows_3.41.5-stable\flutter\bin\cac
+he\dart-sdk\bin\dart.exe compile js --pl
+atform-binaries=C:\Users\USER\Downloads\
+flutter_windows_3.41.5-stable\flutter\bi
+n\cache\flutter_web_sdk\kernel --invoker
+=flutter_tool -Ddart.vm.product=true -DF
+LUTTER_VERSION=3.41.5 -DFLUTTER_CHANNEL=
+stable -DFLUTTER_GIT_URL=https://github.
+com/flutter/flutter.git -DFLUTTER_FRAMEW
+ORK_REVISION=2c9eb20739 -DFLUTTER_ENGINE
+_REVISION=052f31d115 -DFLUTTER_DART_VERS
+ION=3.11.3 -DFLUTTER_WEB_USE_SKIA=true -
+DFLUTTER_WEB_USE_SKWASM=false -DFLUTTER_
+WEB_CANVASKIT_URL=https://www.gstatic.co
+m/flutter-canvaskit/052f31d115eceda8cbff
+1b3481fcde4330c4ae12/ --native-null-asse
+rtions --no-source-maps -O4 --minify -o 
+C:\golf_score\.dart_tool\flutter_build\7
+cead117aaaf3a2b91a22b2efc5cbabc\app.dill
+ --packages=C:\golf_score\.dart_tool\pac
+kage_config.json --cfe-only C:\golf_scor
+e\.dart_tool\flutter_build\7cead117aaaf3
+a2b91a22b2efc5cbabc\main.dart
+#0      RunResult.throwException (packag
+e:flutter_tools/src/base/process.dart:15
+3:5)
+#1      _DefaultProcessUtils.run (packag
+e:flutter_tools/src/base/process.dart:37
+9:19)
+<asynchronous suspension>
+#2      Dart2JSTarget.build (package:flu
+tter_tools/src/build_system/targets/web.
+dart:208:5)
+<asynchronous suspension>
+#3      _BuildInstance._invokeInternal (
+package:flutter_tools/src/build_system/b
+uild_system.dart:937:9)
+<asynchronous suspension>
+#4      Future.wait.<anonymous closure> 
+(dart:async/future.dart:546:21)
+<asynchronous suspension>
+#5      _BuildInstance.invokeTarget (pac
+kage:flutter_tools/src/build_system/buil
+d_system.dart:875:32)
+<asynchronous suspension>
+#6      Future.wait.<anonymous closure> 
+(dart:async/future.dart:546:21)
+<asynchronous suspension>
+#7      _BuildInstance.invokeTarget (pac
+kage:flutter_tools/src/build_system/buil
+d_system.dart:875:32)
+<asynchronous suspension>
+#8      FlutterBuildSystem.build (packag
+e:flutter_tools/src/build_system/build_s
+ystem.dart:684:16)
+<asynchronous suspension>
+#9      WebBuilder.buildWeb (package:flu
+tter_tools/src/web/compile.dart:107:34)
+<asynchronous suspension>
+#10     BuildWebCommand.runCommand (pack
+age:flutter_tools/src/commands/build_web
+.dart:300:5)
+<asynchronous suspension>
+#11     FlutterCommand.run.<anonymous cl
+osure> (package:flutter_tools/src/runner
+/flutter_command.dart:1590:27)
+<asynchronous suspension>
+#12     AppContext.run.<anonymous closur
+e> (package:flutter_tools/src/base/conte
+xt.dart:154:19)
+<asynchronous suspension>
+#13     CommandRunner.runCommand (packag
+e:args/command_runner.dart:212:13)
+<asynchronous suspension>
+#14     FlutterCommandRunner.runCommand.
+<anonymous closure> (package:flutter_too
+ls/src/runner/flutter_command_runner.dar
+t:496:9)
+<asynchronous suspension>
+#15     AppContext.run.<anonymous closur
+e> (package:flutter_tools/src/base/conte
+xt.dart:154:19)
+<asynchronous suspension>
+#16     FlutterCommandRunner.runCommand 
+(package:flutter_tools/src/runner/flutte
+r_command_runner.dart:431:5)
+<asynchronous suspension>
+#17     FlutterCommandRunner.run.<anonym
+ous closure> (package:flutter_tools/src/
+runner/flutter_command_runner.dart:307:3
+3)
+<asynchronous suspension>
+#18     run.<anonymous closure>.<anonymo
+us closure> (package:flutter_tools/runne
+r.dart:104:11)
+<asynchronous suspension>
+#19     AppContext.run.<anonymous closur
+e> (package:flutter_tools/src/base/conte
+xt.dart:154:19)
+Compiling lib\main.dart for the Web...                             25.9s
+<asynchronous suspension>
+#20     main (package:flutter_tools/exec
+utable.dart:103:3)
+<asynchronous suspension>
+
+Error: Failed to compile application for
+ the Web.

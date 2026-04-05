@@ -1,0 +1,35 @@
+{
+  "flutter": {
+    "platforms": {
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "golf-score-app-3d1d8",
+          "configurations": {
+            "android": "1:998951769860:android:b7ac8a24aafc28744e2251",
+            "ios": "1:998951769860:ios:76d9437a5724a2334e2251",
+            "macos": "1:998951769860:ios:76d9437a5724a2334e2251",
+            "web": "1:998951769860:web:8ddf06775041e8244e2251",
+            "windows": "1:998951769860:web:c232e62266fdc2664e2251"
+          }
+        }
+      }
+    }
+  },
+  "hosting": {
+    "public": "build/web",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  },
+  "firestore": {
+    "indexes": "firestore.indexes.json"
+  }
+}
