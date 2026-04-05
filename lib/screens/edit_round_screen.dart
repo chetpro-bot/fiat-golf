@@ -541,10 +541,10 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
                         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
                         elevation: 0,
                         toolbarHeight: 0,
-                        bottom: const TabBar(
-                          labelColor: Color(0xFF1A3E3B),
+                        bottom: TabBar(
+                          labelColor: const Color(0xFF1A3E3B),
                           unselectedLabelColor: Colors.grey,
-                          indicatorColor: Color(0xFF1A3E3B),
+                          indicatorColor: const Color(0xFF1A3E3B),
                           tabs: [
                             Tab(
                               child: ValueListenableBuilder<TextEditingValue>(
