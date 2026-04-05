@@ -1028,7 +1028,6 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
       builder: (ctx) {
         return StatefulBuilder(
           builder: (ctx, setModalState) {
-            final total = hole.penaltyStrokes;
             return Padding(
               padding: EdgeInsets.only(
                 bottom: MediaQuery.of(ctx).viewInsets.bottom + 32, 
@@ -1042,34 +1041,25 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
                     decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
                   ),
                   const SizedBox(height: 20),
-                  Text('${hole.holeNumber}번 홀 벌타 상세', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
-                  Text(
-                    '총 원인별 타수: ${total == 0 ? "없음" : "+$total"}', 
-                    style: TextStyle(
-                      fontSize: 16, 
-                      color: total > 0 ? Colors.redAccent : Colors.grey,
-                      fontWeight: FontWeight.w600
-                    )
-                  ),
+                  Text('${hole.holeNumber}번 홀 패널티', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 32),
-                  _buildDetailedPenaltyRow('티샷 (Tee Shot)', [
-                    _buildPenaltyItem('O.B (+2)', hole.teeOb, (v) {
+                  _buildDetailedPenaltyRow('티샷', [
+                    _buildPenaltyItem('OB', hole.teeOb, (v) {
                       setState(() => hole.teeOb = v);
                       setModalState(() {});
                     }),
-                    _buildPenaltyItem('해저드 (+1)', hole.teeHazard, (v) {
+                    _buildPenaltyItem('해저드', hole.teeHazard, (v) {
                       setState(() => hole.teeHazard = v);
                       setModalState(() {});
                     }),
                   ]),
                   const Divider(height: 48),
-                  _buildDetailedPenaltyRow('세컨샷 이후 (Second+)', [
-                    _buildPenaltyItem('O.B (+2)', hole.secondOb, (v) {
+                  _buildDetailedPenaltyRow('세컨샷', [
+                    _buildPenaltyItem('OB', hole.secondOb, (v) {
                       setState(() => hole.secondOb = v);
                       setModalState(() {});
                     }),
-                    _buildPenaltyItem('해저드 (+1)', hole.secondHazard, (v) {
+                    _buildPenaltyItem('해저드', hole.secondHazard, (v) {
                       setState(() => hole.secondHazard = v);
                       setModalState(() {});
                     }),
