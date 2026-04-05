@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'screens/dashboard_screen.dart';
@@ -23,18 +24,26 @@ class GolfScoreApp extends StatelessWidget {
     return MaterialApp(
       title: 'FIAT GOLF',
       debugShowCheckedModeBanner: false,
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('ko', 'KR'),
+      ],
+      locale: const Locale('ko', 'KR'),
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF1A3E3B), // Premium Deep Green
-          primary: const Color(0xFF1A3E3B),
+          seedColor: const Color(0xFF27AE60), // Brighter Premium Green
+          primary: const Color(0xFF27AE60),
           secondary: const Color(0xFFD4AF37), // Luxury Gold
           onPrimary: Colors.white,
           surface: Colors.white,
-          background: const Color(0xFFF8F9FA), // Clean Background
         ),
         appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF1A3E3B),
+          backgroundColor: Color(0xFF27AE60),
           foregroundColor: Colors.white,
           elevation: 0,
           centerTitle: true,
@@ -46,7 +55,7 @@ class GolfScoreApp extends StatelessWidget {
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF1A3E3B),
+            backgroundColor: const Color(0xFF27AE60),
             foregroundColor: Colors.white,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),

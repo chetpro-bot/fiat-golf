@@ -1,11 +1,14 @@
 <!DOCTYPE html>
-<html>
+<html lang="ko">
 <head>
   <base href="$FLUTTER_BASE_HREF">
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="Premium golf experience by FIAT GOLF">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
@@ -14,6 +17,7 @@
   <link rel="apple-touch-icon" href="favicon.png">
 
   <!-- Favicon -->
+  <meta name="theme-color" content="#27AE60">
   <link rel="icon" type="image/png" href="favicon.png"/>
 
   <title>FIAT GOLF</title>
@@ -45,9 +49,9 @@
     .spinner {
       width: 40px;
       height: 40px;
-      border: 3px solid rgba(26, 62, 59, 0.1);
+      border: 3px solid rgba(39, 174, 96, 0.1);
       border-radius: 50%;
-      border-top-color: #1A3E3B;
+      border-top-color: #27AE60;
       animation: spin 1s ease-in-out infinite;
       margin: 0 auto;
     }
@@ -61,11 +65,23 @@
   </style>
 </head>
 <body>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(registrations) {
+        for(let registration of registrations) { registration.unregister(); }
+      });
+    }
+    if ('caches' in window) {
+      caches.keys().then(function(names) {
+        for (let name of names) { caches.delete(name); console.log("Cache cleared: " + name); }
+      });
+    }
+  </script>
   <div class="loading-container">
     <img src="favicon.png" alt="Logo" class="loading-logo">
     <div class="spinner"></div>
-    <p style="color: #1A3E3B; font-weight: 500; margin-top: 16px; letter-spacing: 1px;">FIAT GOLF 로딩 중...</p>
+    <p style="color: #27AE60; font-weight: 500; margin-top: 16px; letter-spacing: 1px;">FIAT GOLF 로딩 중...</p>
   </div>
-  <script src="flutter_bootstrap.js" async></script>
+  <script src="flutter_bootstrap.js?v=04052210" async></script>
 </body>
 </html>

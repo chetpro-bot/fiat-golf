@@ -360,7 +360,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.round != null ? '기록 수정' : '기록 추가'),
+        title: Text(widget.round != null ? '기록 수정 (v1.0.3)' : '기록 추가 (v1.0.3)'),
         actions: widget.round != null ? [
           IconButton(
             icon: const Icon(Icons.delete, color: Colors.redAccent),
@@ -802,32 +802,39 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
           // 스코어
           Expanded(flex: 23, child: _buildMiniCounter(score, onScoreChanged, isScore: true)),
           // 퍼트
-          Expanded(flex: 23, child: _buildMiniCounter(putt, onPuttChanged, defaultValue: 2)),
+          Expanded(flex: 23, child: _buildMiniCounter(putt, onPuttChanged, isPutt: true, defaultValue: 2)),
           // 벌타
           Expanded(
             flex: 23, 
             child: isUser 
-              ? InkWell(
-                  onTap: onPenaltyTap,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          penalty == 0 ? '-' : '$penalty',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold, 
-                            fontSize: 16, // 벌타 텍스트 확대
-                            color: penalty > 0 ? Colors.redAccent : Colors.black87
-                          ),
-                        ),
-                        if (penalty > 0)
+              ? Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: InkWell(
+                    onTap: onPenaltyTap,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFEBEE),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
                           Text(
-                            '상세',
-                            style: TextStyle(fontSize: 10, color: Colors.grey.shade600, fontWeight: FontWeight.bold),
+                            penalty == 0 ? '-' : '$penalty',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold, 
+                              fontSize: 16, 
+                              color: penalty > 0 ? Colors.redAccent : Colors.black87
+                            ),
                           ),
-                      ],
+                          if (penalty > 0)
+                            Text(
+                              '상세',
+                              style: TextStyle(fontSize: 10, color: Colors.grey.shade600, fontWeight: FontWeight.bold),
+                            ),
+                        ],
+                      ),
                     ),
                   ),
                 )
@@ -838,7 +845,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
     );
   }
 
-  Widget _buildMiniCounter(int value, ValueChanged<int> onChanged, {bool isScore = false, bool isPenalty = false, int defaultValue = 0}) {
+  Widget _buildMiniCounter(int value, ValueChanged<int> onChanged, {bool isScore = false, bool isPenalty = false, bool isPutt = false, int defaultValue = 0}) {
     String display = (value == -99) ? '-' : (isScore && value > 0 ? '+$value' : '$value');
     Color textColor = Colors.black87;
     if (isScore && value != -99) {
@@ -846,6 +853,11 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
       else if (value > 0) textColor = Colors.redAccent;
     }
     if (isPenalty && value > 0) textColor = Colors.redAccent;
+
+    Color btnColor = Colors.grey.shade100;
+    if (isScore) btnColor = Colors.green.shade100;
+    else if (isPutt) btnColor = Colors.blue.shade100;
+    else if (isPenalty) btnColor = Colors.orange.shade100;
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -857,17 +869,17 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
             else onChanged(value - 1);
           },
           child: Container(
-            padding: const EdgeInsets.all(8), // 클릭 영역 및 아이콘 배경 확대
-            decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.grey.shade100),
-            child: const Icon(Icons.remove, size: 22, color: Colors.black54), // 아이콘 크기 키움
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(shape: BoxShape.circle, color: btnColor),
+            child: const Icon(Icons.remove, size: 20, color: Colors.black54),
           ),
         ),
         SizedBox(
-          width: 38, // 숫자가 충분히 들어갈 공간 확보
+          width: 30,
           child: Text(
             display, 
             textAlign: TextAlign.center, 
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: textColor) // 숫자 크기 키움
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: textColor)
           )
         ),
         GestureDetector(
@@ -876,9 +888,9 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
             else onChanged(value + 1);
           },
           child: Container(
-            padding: const EdgeInsets.all(8), // 클릭 영역 및 아이콘 배경 확대
-            decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.grey.shade100),
-            child: const Icon(Icons.add, size: 22, color: Colors.black54), // 아이콘 크기 키움
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(shape: BoxShape.circle, color: btnColor),
+            child: const Icon(Icons.add, size: 20, color: Colors.black54),
           ),
         ),
       ],
@@ -1557,15 +1569,17 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
                     ),
                   ),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.end, // 오른쪽 정렬 (회계 방식)
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Text(
                         allNames[i], 
+                        textAlign: TextAlign.center,
                         style: const TextStyle(color: Color(0xFF5D6D7E), fontSize: 11, fontWeight: FontWeight.w600)
                       ),
                       const SizedBox(height: 4),
                       Text(
                         totals[i] == 0 ? '0' : (isPositive ? '+$formattedAmount' : '-$formattedAmount'),
+                        textAlign: TextAlign.right,
                         style: TextStyle(
                           color: amountColor,
                           fontWeight: FontWeight.bold,

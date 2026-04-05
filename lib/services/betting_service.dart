@@ -55,19 +55,17 @@ class BettingService {
         if (sI <= -1) bonus += 1;
         if (sJ <= -1) bonus -= 1;
 
-        // 니어리스트 보너스
-        if (config.nearestRule > 0) {
-          // i가 니어 성공
-          if (hole.nearestPlayerIndex == i && hole.nearestErasePlayerIndex == -1) {
-            // 니어 성공 조건: 파/버디 (score <= 0)
-            if (sI <= 0) bonus += 1;
-            // 니어 실패 조건: 보기 이상 (score > 0)
-            else if (config.nearestRule == 2) bonus -= 1;
+        // 니어리스트 보너스 (파3 전용)
+        if (hole.par == 3 && hole.nearestPlayerIndex != -1) {
+          // i가 니어 후보인 경우
+          if (hole.nearestPlayerIndex == i) {
+            if (sI <= 0) bonus += 1; // 성공 (파 이하)
+            else bonus -= 1; // 실패 (보기 이상)
           }
-          // j가 니어 성공
-          if (hole.nearestPlayerIndex == j && hole.nearestErasePlayerIndex == -1) {
-            if (sJ <= 0) bonus -= 1;
-            else if (config.nearestRule == 2) bonus += 1;
+          // j가 니어 후보인 경우
+          if (hole.nearestPlayerIndex == j) {
+            if (sJ <= 0) bonus -= 1; // 상대방 성공
+            else bonus += 1; // 상대방 실패
           }
         }
 
