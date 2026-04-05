@@ -125,11 +125,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 docs[index].data() as Map<String, dynamic>,
               );
 
-              int totalPar = round.holes.fold(0, (sum, h) => sum + h.par);
-              int totalPutt = round.holes.fold(0, (sum, h) => sum + h.putt);
+              int totalPar = round.holes.fold(0, (total, h) => total + h.par);
+              int totalPutt = round.holes.fold(0, (total, h) => total + h.putt);
               int overUnder = round.totalScore; // totalScore는 이제 오버/언더 누적값을 저장함
               int grossScore = totalPar + overUnder; 
-              String overUnderStr = overUnder > 0 ? '+$overUnder' : (overUnder < 0 ? '$overUnder' : 'E');
+              String overUnderStr;
+              if (overUnder > 0) {
+                overUnderStr = '+$overUnder';
+              } else if (overUnder < 0) {
+                overUnderStr = '$overUnder';
+              } else {
+                overUnderStr = 'E';
+              }
 
               String courseNames = '';
               if (round.frontCourseName.isNotEmpty && round.backCourseName.isNotEmpty) {
@@ -188,7 +195,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   trailing: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1A3E3B).withOpacity(0.05),
+                      color: const Color(0xFF27AE60).withOpacity(0.05),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Column(
@@ -256,7 +263,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   void _showQPointBreakdown(BuildContext context, RoundData round) {
-    int totalPar = round.holes.fold(0, (sum, h) => sum + h.par);
+    int totalPar = round.holes.fold(0, (total, h) => total + h.par);
     int grossScore = totalPar + round.totalScore;
     bool sub80 = grossScore <= 79;
     
@@ -274,7 +281,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       bool isGir = (hole.score - hole.putt) <= -2;
       if (!isGir) {
         scramblingChances++;
-        if (hole.score <= 0) scramblingSuccesses++;
+        if (hole.score <= 0) { scramblingSuccesses++; }
       }
     }
     
@@ -283,14 +290,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
     bool digitalRound = isDigital;
     bool noThreePutt = !hasThreePutt;
 
-    Widget _buildBonusRow(String title, bool achieved) {
+    int points = 0;
+    if (sub80) { points += 2; }
+    if (scrambling50) { points += 2; }
+    if (oneBall) { points += 2; }
+    if (digitalRound) { points += 2; }
+    if (noThreePutt) { points += 2; }
+
+    Widget buildBonusRow(String title, bool achieved) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 2),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(title, style: const TextStyle(fontSize: 14)),
-            Text(achieved ? 'SUCCESS' : 'FAIL', style: TextStyle(color: achieved ? const Color(0xFF1A3E3B) : Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 14)),
+            Text(achieved ? 'SUCCESS' : 'FAIL', style: TextStyle(color: achieved ? const Color(0xFF27AE60) : Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 14)),
           ],
         ),
       );
@@ -306,11 +320,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
             child: ListView(
               shrinkWrap: true,
               children: [
-                _buildBonusRow('Sub-80 Round (+2)', sub80),
-                _buildBonusRow('Scrambling 50%+ (+2)', scrambling50),
-                _buildBonusRow('One Ball Play (+2)', oneBall),
-                _buildBonusRow('Digital Round (+2)', digitalRound),
-                _buildBonusRow('No Three Putt (+2)', noThreePutt),
+                buildBonusRow('Sub-80 Round (+2)', sub80),
+                buildBonusRow('Scrambling 50%+ (+2)', scrambling50),
+                buildBonusRow('One Ball Play (+2)', oneBall),
+                buildBonusRow('Digital Round (+2)', digitalRound),
+                buildBonusRow('No Three Putt (+2)', noThreePutt),
                 const Divider(),
                 ...round.holes.map((h) {
                   int pts = h.qPoint;
@@ -355,7 +369,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              style: TextButton.styleFrom(foregroundColor: const Color(0xFF1A3E3B)),
+              style: TextButton.styleFrom(foregroundColor: const Color(0xFF27AE60)),
               child: const Text('닫기')
             )
           ],

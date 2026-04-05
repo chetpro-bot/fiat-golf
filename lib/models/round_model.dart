@@ -54,9 +54,11 @@ class HoleData {
   int secondOb;
   int secondHazard;
   
-  // 오장마스터를 위한 동반자 점수 (유저가 0번 인덱스, 동반자 1~3은 여기에 저장)
-  // companions 리스트 순서와 매칭: companions[0]의 score는 companionScores[0]
+  // 오장마스터를 위한 동반자 상세 데이터 (유저가 0번 인덱스, 동반자 1~3은 여기에 저장)
+  // companions 리스트 순서와 매칭: companions[0]의 데이터는 인덱스 0에 저장
   List<int> companionScores;
+  List<int> companionPutts;
+  List<int> companionPenalties;
   
   // 내기 이벤트
   int nearestPlayerIndex; // -1:없음, 0:유저, 1~3:동반자
@@ -72,9 +74,13 @@ class HoleData {
     this.secondOb = 0,
     this.secondHazard = 0,
     List<int>? companionScores,
+    List<int>? companionPutts,
+    List<int>? companionPenalties,
     this.nearestPlayerIndex = -1,
     this.nearestErasePlayerIndex = -1,
-  }) : companionScores = companionScores ?? List.filled(3, -99);
+  }) : companionScores = companionScores ?? List.filled(3, -99),
+       companionPutts = companionPutts ?? List.filled(3, -99),
+       companionPenalties = companionPenalties ?? List.filled(3, 0);
 
   Map<String, dynamic> toMap() {
     return {
@@ -87,6 +93,8 @@ class HoleData {
       'secondOb': secondOb,
       'secondHazard': secondHazard,
       'companionScores': companionScores,
+      'companionPutts': companionPutts,
+      'companionPenalties': companionPenalties,
       'nearestPlayerIndex': nearestPlayerIndex,
       'nearestErasePlayerIndex': nearestErasePlayerIndex,
     };
@@ -103,6 +111,8 @@ class HoleData {
       secondOb: map['secondOb'] ?? 0,
       secondHazard: map['secondHazard'] ?? 0,
       companionScores: List<int>.from(map['companionScores'] ?? List.filled(3, -99)),
+      companionPutts: List<int>.from(map['companionPutts'] ?? List.filled(3, -99)),
+      companionPenalties: List<int>.from(map['companionPenalties'] ?? List.filled(3, 0)),
       nearestPlayerIndex: map['nearestPlayerIndex'] ?? -1,
       nearestErasePlayerIndex: map['nearestErasePlayerIndex'] ?? -1,
     );
@@ -187,7 +197,7 @@ class RoundData {
     int points = 0;
     
     // 보너스 점수 로직 추가
-    int totalPar = holes.fold(0, (sum, h) => sum + h.par);
+    int totalPar = holes.fold(0, (total, h) => total + h.par);
     int grossScore = totalPar + totalScore;
     if (grossScore <= 79) points += 2;
 

@@ -84,7 +84,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
 
   Widget _buildStatisticsDashboard(BuildContext context, List<RoundData> rounds) {
     int totalRounds = rounds.length;
-    int totalQPoints = rounds.fold(0, (sum, r) => sum + r.qPoint);
+    int totalQPoints = rounds.fold(0, (total, r) => total + r.qPoint);
     
     int totalHoles = 0;
     int girHits = 0;
@@ -181,7 +181,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('총 $totalRounds 라운드 분석', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1A3E3B))),
+            Text('총 $totalRounds 라운드 분석', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF27AE60))),
           ],
         ),
         const SizedBox(height: 16),
@@ -195,7 +195,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('📊 기본 통계', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1A3E3B))),
+                const Text('📊 기본 통계', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF27AE60))),
                 const Divider(height: 24),
                 Table(
                   border: TableBorder.all(color: Colors.grey.shade300),
@@ -384,7 +384,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   }
 
   Widget _buildParStat(String title, double avg, double parTarget) {
-    Color col = avg > parTarget ? Colors.redAccent : const Color(0xFF1A3E3B);
+    Color col = avg > parTarget ? Colors.redAccent : const Color(0xFF27AE60);
     return Column(
       children: [
         Text(title, style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),

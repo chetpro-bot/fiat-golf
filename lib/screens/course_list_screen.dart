@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'edit_course_screen.dart';
-import '../services/auth_service.dart';
 
 class CourseListScreen extends StatelessWidget {
   const CourseListScreen({super.key});
@@ -22,7 +21,12 @@ class CourseListScreen extends StatelessWidget {
             return const Center(child: CircularProgressIndicator());
           }
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return const Center(child: Text('등록된 골프장이 없습니다.\n새로운 골프장을 추가해보세요.', textAlign: TextAlign.center));
+            return const Center(
+              child: Text(
+                '등록된 골프장이 없습니다.\n새로운 골프장을 추가해보세요.',
+                textAlign: TextAlign.center,
+              ),
+            );
           }
 
           final docs = snapshot.data!.docs;
@@ -47,7 +51,11 @@ class CourseListScreen extends StatelessWidget {
                 margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: ListTile(
                   title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text(courseNames.isNotEmpty ? '등록된 코스: $courseNames$bestScoreDisplay' : '등록된 세부 코스 없음$bestScoreDisplay'),
+                  subtitle: Text(
+                    courseNames.isNotEmpty
+                        ? '등록된 코스: $courseNames$bestScoreDisplay'
+                        : '등록된 세부 코스 없음$bestScoreDisplay',
+                  ),
                   trailing: const Icon(Icons.edit, size: 20, color: Colors.blue),
                   onTap: () {
                     Navigator.push(

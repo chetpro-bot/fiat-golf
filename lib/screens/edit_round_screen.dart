@@ -535,9 +535,9 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
                             Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF1A3E3B).withOpacity(0.05),
+                                color: const Color(0xFF27AE60).withOpacity(0.05),
                                 borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: const Color(0xFF1A3E3B).withOpacity(0.2)),
+                                border: Border.all(color: const Color(0xFF27AE60).withOpacity(0.2)),
                               ),
                               child: Column(
                                 children: [
@@ -588,7 +588,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
                               Text('홀별 스코어', style: Theme.of(context).textTheme.titleLarge),
                               Text(
                                 '$_totalGross($_overUnderStr), $_totalPutt putt', 
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF1A3E3B)),
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF27AE60)),
                               ),
                             ],
                           ),
@@ -600,9 +600,9 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
                         elevation: 0,
                         toolbarHeight: 0,
                         bottom: TabBar(
-                          labelColor: const Color(0xFF1A3E3B),
+                          labelColor: const Color(0xFF27AE60),
                           unselectedLabelColor: Colors.grey,
-                          indicatorColor: const Color(0xFF1A3E3B),
+                          indicatorColor: const Color(0xFF27AE60),
                           tabs: [
                             Tab(
                               child: ValueListenableBuilder<TextEditingValue>(
@@ -682,7 +682,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
           elevation: 2,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
-            side: hole.score != -99 ? BorderSide(color: const Color(0xFF1A3E3B).withOpacity(0.3), width: 1) : BorderSide.none,
+            side: hole.score != -99 ? BorderSide(color: const Color(0xFF27AE60).withOpacity(0.3), width: 1) : BorderSide.none,
           ),
           child: ExpansionTile(
             title: Row(
@@ -690,14 +690,14 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
                 SizedBox(
                   width: 50,
                   child: Text('${hole.holeNumber}', 
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF1A3E3B))),
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF27AE60))),
                 ),
                 Expanded(
                   child: Text(
                     hole.score == -99 ? '미입력' : (hole.score > 0 ? '+${hole.score}' : (hole.score == 0 ? 'Par' : '${hole.score}')),
                     style: TextStyle(
                       fontWeight: FontWeight.bold, 
-                      color: hole.score == -99 ? Colors.grey : (hole.score <= 0 ? const Color(0xFF1A3E3B) : Colors.redAccent)
+                      color: hole.score == -99 ? Colors.grey : (hole.score <= 0 ? const Color(0xFF27AE60) : Colors.redAccent)
                     ),
                   ),
                 ),
@@ -723,33 +723,49 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
                 ],
               ),
               const Divider(),
-              // 2. 플레이어별 점수 입력
-              _buildPlayerScoreRow('나 (Me)', hole.score, (v) => setState(() => hole.score = v), isUser: true),
+              // 2. 플레이어별 점수 입력 헤더
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                child: Row(
+                  children: [
+                    Expanded(flex: 3, child: Text('플레이어', style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.bold))),
+                    Expanded(flex: 2, child: Center(child: Text('스코어', style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.bold)))),
+                    Expanded(flex: 2, child: Center(child: Text('퍼트', style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.bold)))),
+                    Expanded(flex: 2, child: Center(child: Text('벌타', style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.bold)))),
+                  ],
+                ),
+              ),
+              const Divider(height: 8),
+              // 사용자 본인
+              _buildPlayerScoreRow(
+                name: '나 (Me)', 
+                score: hole.score, 
+                putt: hole.putt, 
+                penalty: hole.penaltyStrokes,
+                onScoreChanged: (v) => setState(() => hole.score = v),
+                onPuttChanged: (v) => setState(() => hole.putt = v),
+                onPenaltyChanged: (v) => setState(() => hole.teeOb = v), // 기본 벌타 증감 (상세는 다이얼로그)
+                onPenaltyTap: () => _showPenaltyDialog(context, hole),
+                isUser: true
+              ),
+              // 동반자들
               if (_ojangConfig.enabled) ...[
                 for (int i = 0; i < compNames.length; i++)
-                  _buildPlayerScoreRow(compNames[i], hole.companionScores[i], (v) => setState(() => hole.companionScores[i] = v)),
+                  _buildPlayerScoreRow(
+                    name: compNames[i], 
+                    score: hole.companionScores[i],
+                    putt: hole.companionPutts[i],
+                    penalty: hole.companionPenalties[i],
+                    onScoreChanged: (v) => setState(() => hole.companionScores[i] = v),
+                    onPuttChanged: (v) => setState(() => hole.companionPutts[i] = v),
+                    onPenaltyChanged: (v) => setState(() => hole.companionPenalties[i] = v),
+                    onPenaltyTap: () {}, // 동반자는 터치시 아무것도 안함 (간편 카운터만 사용)
+                  ),
                 
                 const Divider(),
-                // 3. 내기 이벤트 (니어리스트)
-                _buildBettingEvents(hole, compNames),
+                // 3. 내기 이벤트 (니어리스트 - 파3 전용)
+                if (hole.par == 3) _buildBettingEvents(hole, compNames),
               ],
-              // 4. 유저 상세 (퍼트, 벌타)
-              const Divider(),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _buildCounter('Putt', hole.putt, (val) => setState(() => hole.putt = val)),
-                  GestureDetector(
-                    onTap: () => _showPenaltyDialog(context, hole),
-                    child: Column(
-                      children: [
-                        Icon(Icons.warning_amber_rounded, color: hole.penaltyStrokes > 0 ? Colors.redAccent : Colors.grey),
-                        Text(hole.penaltyStrokes > 0 ? '${hole.penaltyStrokes} 벌타' : '벌타', style: const TextStyle(fontSize: 12)),
-                      ],
-                    ),
-                  )
-                ],
-              )
             ],
           ),
         );
@@ -757,15 +773,94 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
     );
   }
 
-  Widget _buildPlayerScoreRow(String name, int value, ValueChanged<int> onChanged, {bool isUser = false}) {
+  Widget _buildPlayerScoreRow({
+    required String name,
+    required int score,
+    required int putt,
+    required int penalty,
+    required ValueChanged<int> onScoreChanged,
+    required ValueChanged<int> onPuttChanged,
+    required ValueChanged<int> onPenaltyChanged,
+    required VoidCallback onPenaltyTap,
+    bool isUser = false,
+  }) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
         children: [
-          Expanded(child: Text(name, style: TextStyle(fontWeight: isUser ? FontWeight.bold : FontWeight.normal))),
-          _buildCounterSmall(value, onChanged, isOverUnder: true),
+          Expanded(
+            flex: 3, 
+            child: Text(
+              name, 
+              style: TextStyle(
+                fontWeight: isUser ? FontWeight.bold : FontWeight.normal,
+                fontSize: 13,
+                overflow: TextOverflow.ellipsis
+              )
+            )
+          ),
+          // 스코어
+          Expanded(flex: 2, child: _buildMiniCounter(score, onScoreChanged, isScore: true)),
+          // 퍼트
+          Expanded(flex: 2, child: _buildMiniCounter(putt, onPuttChanged, defaultValue: 2)),
+          // 벌타
+          Expanded(
+            flex: 2, 
+            child: InkWell(
+              onTap: isUser ? onPenaltyTap : null,
+              onLongPress: onPenaltyTap,
+              child: _buildMiniCounter(penalty, onPenaltyChanged, isPenalty: true),
+            )
+          ),
         ],
       ),
+    );
+  }
+
+  Widget _buildMiniCounter(int value, ValueChanged<int> onChanged, {bool isScore = false, bool isPenalty = false, int defaultValue = 0}) {
+    String display = (value == -99) ? '-' : (isScore && value > 0 ? '+$value' : '$value');
+    Color textColor = Colors.black87;
+    if (isScore && value != -99) {
+      if (value < 0) textColor = const Color(0xFF27AE60);
+      else if (value > 0) textColor = Colors.redAccent;
+    }
+    if (isPenalty && value > 0) textColor = Colors.redAccent;
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        GestureDetector(
+          onTap: () {
+            if (value == -99) onChanged(defaultValue);
+            else if (isPenalty) { if (value > 0) onChanged(value - 1); }
+            else onChanged(value - 1);
+          },
+          child: Container(
+            padding: const EdgeInsets.all(2),
+            decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.grey.shade100),
+            child: const Icon(Icons.remove, size: 14, color: Colors.grey),
+          ),
+        ),
+        SizedBox(
+          width: 24, 
+          child: Text(
+            display, 
+            textAlign: TextAlign.center, 
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: textColor)
+          )
+        ),
+        GestureDetector(
+          onTap: () {
+            if (value == -99) onChanged(defaultValue);
+            else onChanged(value + 1);
+          },
+          child: Container(
+            padding: const EdgeInsets.all(2),
+            decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.grey.shade100),
+            child: const Icon(Icons.add, size: 14, color: Colors.grey),
+          ),
+        ),
+      ],
     );
   }
 
@@ -806,29 +901,6 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
             );
           }),
         ),
-        if (hole.nearestPlayerIndex != -1) ...[
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              const Text('지우기 성공:', style: TextStyle(fontSize: 12)),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Wrap(
-                  spacing: 4,
-                  children: List.generate(allPlayers.length, (i) {
-                    if (hole.nearestPlayerIndex == i) return const SizedBox.shrink();
-                    bool isErased = hole.nearestErasePlayerIndex == i;
-                    return ChoiceChip(
-                      label: Text(allPlayers[i], style: const TextStyle(fontSize: 11)),
-                      selected: isErased,
-                      onSelected: (v) => setState(() => hole.nearestErasePlayerIndex = v ? i : -1),
-                    );
-                  }),
-                ),
-              ),
-            ],
-          ),
-        ],
       ],
     );
   }
@@ -842,7 +914,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: myGain >= 0 ? const Color(0xFF1A3E3B).withOpacity(0.1) : Colors.red.withOpacity(0.1),
+        color: myGain >= 0 ? const Color(0xFF27AE60).withOpacity(0.1) : Colors.red.withOpacity(0.1),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
@@ -850,7 +922,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
         style: TextStyle(
           fontSize: 12, 
           fontWeight: FontWeight.bold, 
-          color: myGain >= 0 ? const Color(0xFF1A3E3B) : Colors.redAccent
+          color: myGain >= 0 ? const Color(0xFF27AE60) : Colors.redAccent
         ),
       ),
     );
@@ -1232,9 +1304,9 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
     if (holes.length < startIndex + 9) return const SizedBox(); 
 
     final subHoles = holes.sublist(startIndex, startIndex + 9);
-    final totalPar = subHoles.fold(0, (sum, h) => sum + h.par);
-    final totalScore = subHoles.fold(0, (sum, h) => sum + h.score);
-    final totalPutt = subHoles.fold(0, (sum, h) => sum + h.putt);
+    final totalPar = subHoles.fold(0, (total, h) => total + h.par);
+    final totalScore = subHoles.fold(0, (total, h) => total + h.score);
+    final totalPutt = subHoles.fold(0, (total, h) => total + h.putt);
 
     return Table(
       border: TableBorder.all(color: Colors.grey.shade300, width: 1),
@@ -1321,7 +1393,6 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
         ),
       ),
     );
-    );
   }
 
   Widget _buildTotalSettlementSummary(List<String> compNames) {
@@ -1347,7 +1418,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF1A3E3B),
+        color: const Color(0xFF27AE60),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4, offset: const Offset(0, -2))],
       ),
       child: Column(
