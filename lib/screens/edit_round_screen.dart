@@ -1486,44 +1486,75 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
     final List<String> allNames = ['나', ...compNames];
     
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: const Color(0xFF27AE60),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4, offset: const Offset(0, -2))],
+        color: const Color(0xFF1A1F2B), // 프리미엄 다크 네이비
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.3), 
+            blurRadius: 12, 
+            offset: const Offset(0, -4)
+          )
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(Icons.account_balance_wallet, color: Color(0xFFD4AF37), size: 16),
-              SizedBox(width: 8),
-              Text('오장마스터 최종 정산', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+              const Icon(Icons.stars, color: Color(0xFFD4AF37), size: 18), // 금색 스타 아이콘
+              const SizedBox(width: 8),
+              const Text(
+                '오장마스터 실시간 정산', 
+                style: TextStyle(
+                  color: Colors.white, 
+                  fontWeight: FontWeight.bold, 
+                  fontSize: 15,
+                  letterSpacing: -0.5
+                )
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFD4AF37).withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: const Text('LIVE', style: TextStyle(color: Color(0xFFD4AF37), fontSize: 10, fontWeight: FontWeight.bold)),
+              )
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
               children: List.generate(totals.length, (i) {
                 final isPositive = totals[i] >= 0;
+                final amountColor = isPositive ? const Color(0xFFF1C40F) : const Color(0xFFE74C3C);
                 return Container(
-                  margin: const EdgeInsets.only(right: 12),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  margin: const EdgeInsets.only(right: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: isPositive ? const Color(0xFFD4AF37).withOpacity(0.5) : Colors.redAccent.withOpacity(0.5)),
+                    color: Colors.white.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: isPositive ? const Color(0xFFD4AF37).withOpacity(0.3) : const Color(0xFFE74C3C).withOpacity(0.3),
+                      width: 1
+                    ),
                   ),
                   child: Column(
                     children: [
-                      Text(allNames[i], style: const TextStyle(color: Colors.white, fontSize: 11)),
+                      Text(
+                        allNames[i], 
+                        style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 11)
+                      ),
+                      const SizedBox(height: 4),
                       Text(
                         isPositive ? '+${NumberFormat('#,###').format(totals[i])}' : NumberFormat('#,###').format(totals[i]),
                         style: TextStyle(
-                          color: isPositive ? const Color(0xFFD4AF37) : Colors.redAccent,
+                          color: amountColor,
                           fontWeight: FontWeight.bold,
-                          fontSize: 13,
+                          fontSize: 14,
                         ),
                       ),
                     ],
