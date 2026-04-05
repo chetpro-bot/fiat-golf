@@ -725,10 +725,10 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
               const Divider(),
               // 2. 플레이어별 점수 입력 헤더
               const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                padding: EdgeInsets.symmetric(horizontal: 4, vertical: 4),
                 child: Row(
                   children: [
-                    Expanded(flex: 3, child: Text('플레이어', style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.bold))),
+                    Expanded(flex: 2, child: Text('플레이어', style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.bold))),
                     Expanded(flex: 2, child: Center(child: Text('스코어', style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.bold)))),
                     Expanded(flex: 2, child: Center(child: Text('퍼트', style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.bold)))),
                     Expanded(flex: 2, child: Center(child: Text('벌타', style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.bold)))),
@@ -785,16 +785,16 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
     bool isUser = false,
   }) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
+      padding: const EdgeInsets.symmetric(vertical: 10), // 상하폭 확대
       child: Row(
         children: [
           Expanded(
-            flex: 3, 
+            flex: 2, // 이름 영역 축소
             child: Text(
               name, 
               style: TextStyle(
                 fontWeight: isUser ? FontWeight.bold : FontWeight.normal,
-                fontSize: 13,
+                fontSize: 14,
                 overflow: TextOverflow.ellipsis
               )
             )
@@ -809,23 +809,26 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
             child: isUser 
               ? InkWell(
                   onTap: onPenaltyTap,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        penalty == 0 ? '-' : '$penalty',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold, 
-                          fontSize: 13, 
-                          color: penalty > 0 ? Colors.redAccent : Colors.black87
-                        ),
-                      ),
-                      if (penalty > 0)
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
                         Text(
-                          '상세',
-                          style: TextStyle(fontSize: 9, color: Colors.grey.shade600),
+                          penalty == 0 ? '-' : '$penalty',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold, 
+                            fontSize: 15, // 벌타 텍스트 확대
+                            color: penalty > 0 ? Colors.redAccent : Colors.black87
+                          ),
                         ),
-                    ],
+                        if (penalty > 0)
+                          Text(
+                            '상세',
+                            style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
+                          ),
+                      ],
+                    ),
                   ),
                 )
               : _buildMiniCounter(penalty, onPenaltyChanged, isPenalty: true),
@@ -854,17 +857,17 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
             else onChanged(value - 1);
           },
           child: Container(
-            padding: const EdgeInsets.all(2),
+            padding: const EdgeInsets.all(6), // 아이콘 패딩 확대
             decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.grey.shade100),
-            child: const Icon(Icons.remove, size: 14, color: Colors.grey),
+            child: const Icon(Icons.remove, size: 18, color: Colors.black54), // 아이콘 크기 확대
           ),
         ),
         SizedBox(
-          width: 24, 
+          width: 32, // 텍스트 영역 확대
           child: Text(
             display, 
             textAlign: TextAlign.center, 
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: textColor)
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: textColor) // 텍스트 크기 확대
           )
         ),
         GestureDetector(
@@ -873,9 +876,9 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
             else onChanged(value + 1);
           },
           child: Container(
-            padding: const EdgeInsets.all(2),
+            padding: const EdgeInsets.all(6), // 아이콘 패딩 확대
             decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.grey.shade100),
-            child: const Icon(Icons.add, size: 14, color: Colors.grey),
+            child: const Icon(Icons.add, size: 18, color: Colors.black54), // 아이콘 크기 확대
           ),
         ),
       ],
