@@ -1044,7 +1044,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
                   Text('${hole.holeNumber}번 홀 패널티', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 32),
                   _buildDetailedPenaltyRow('티샷', [
-                    _buildPenaltyItem('OB', hole.teeOb, (v) {
+                    _buildPenaltyItem('O.B', hole.teeOb, (v) {
                       setState(() => hole.teeOb = v);
                       setModalState(() {});
                     }),
@@ -1055,7 +1055,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
                   ]),
                   const Divider(height: 48),
                   _buildDetailedPenaltyRow('세컨샷', [
-                    _buildPenaltyItem('OB', hole.secondOb, (v) {
+                    _buildPenaltyItem('O.B', hole.secondOb, (v) {
                       setState(() => hole.secondOb = v);
                       setModalState(() {});
                     }),
