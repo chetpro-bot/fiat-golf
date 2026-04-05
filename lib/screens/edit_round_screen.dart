@@ -806,11 +806,29 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
           // 벌타
           Expanded(
             flex: 2, 
-            child: InkWell(
-              onTap: isUser ? onPenaltyTap : null,
-              onLongPress: onPenaltyTap,
-              child: _buildMiniCounter(penalty, onPenaltyChanged, isPenalty: true),
-            )
+            child: isUser 
+              ? InkWell(
+                  onTap: onPenaltyTap,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        penalty == 0 ? '-' : '$penalty',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold, 
+                          fontSize: 13, 
+                          color: penalty > 0 ? Colors.redAccent : Colors.black87
+                        ),
+                      ),
+                      if (penalty > 0)
+                        Text(
+                          '상세',
+                          style: TextStyle(fontSize: 9, color: Colors.grey.shade600),
+                        ),
+                    ],
+                  ),
+                )
+              : _buildMiniCounter(penalty, onPenaltyChanged, isPenalty: true),
           ),
         ],
       ),
@@ -1005,55 +1023,68 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (ctx) {
         return StatefulBuilder(
           builder: (ctx, setModalState) {
+            final total = hole.penaltyStrokes;
             return Padding(
               padding: EdgeInsets.only(
                 bottom: MediaQuery.of(ctx).viewInsets.bottom + 32, 
-                top: 24, left: 16, right: 16
+                top: 24, left: 24, right: 24
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text('${hole.holeNumber} Hole 벌타 입력', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      _buildPenaltyCounter('티샷 OB', hole.teeOb, (v) {
-                        setState(() => hole.teeOb = v);
-                        setModalState(() {});
-                      }),
-                      _buildPenaltyCounter('티샷 해저드', hole.teeHazard, (v) {
-                        setState(() => hole.teeHazard = v);
-                        setModalState(() {});
-                      }),
-                    ],
+                  Container(
+                    width: 40, height: 4, 
+                    decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
                   ),
-                  const SizedBox(height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      _buildPenaltyCounter('세컨샷 OB', hole.secondOb, (v) {
-                        setState(() => hole.secondOb = v);
-                        setModalState(() {});
-                      }),
-                      _buildPenaltyCounter('세컨샷 해저드', hole.secondHazard, (v) {
-                        setState(() => hole.secondHazard = v);
-                        setModalState(() {});
-                      }),
-                    ],
+                  const SizedBox(height: 20),
+                  Text('${hole.holeNumber}번 홀 벌타 상세', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  Text(
+                    '총 원인별 타수: ${total == 0 ? "없음" : "+$total"}', 
+                    style: TextStyle(
+                      fontSize: 16, 
+                      color: total > 0 ? Colors.redAccent : Colors.grey,
+                      fontWeight: FontWeight.w600
+                    )
                   ),
                   const SizedBox(height: 32),
+                  _buildDetailedPenaltyRow('티샷 (Tee Shot)', [
+                    _buildPenaltyItem('O.B (+2)', hole.teeOb, (v) {
+                      setState(() => hole.teeOb = v);
+                      setModalState(() {});
+                    }),
+                    _buildPenaltyItem('해저드 (+1)', hole.teeHazard, (v) {
+                      setState(() => hole.teeHazard = v);
+                      setModalState(() {});
+                    }),
+                  ]),
+                  const Divider(height: 48),
+                  _buildDetailedPenaltyRow('세컨샷 이후 (Second+)', [
+                    _buildPenaltyItem('O.B (+2)', hole.secondOb, (v) {
+                      setState(() => hole.secondOb = v);
+                      setModalState(() {});
+                    }),
+                    _buildPenaltyItem('해저드 (+1)', hole.secondHazard, (v) {
+                      setState(() => hole.secondHazard = v);
+                      setModalState(() {});
+                    }),
+                  ]),
+                  const SizedBox(height: 40),
                   ElevatedButton(
                     onPressed: () => Navigator.pop(ctx),
                     style: ElevatedButton.styleFrom(
-                      minimumSize: const Size.fromHeight(50),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      minimumSize: const Size.fromHeight(56),
+                      backgroundColor: const Color(0xFF27AE60),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      elevation: 0,
                     ),
-                    child: const Text('확인', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    child: const Text('입력 완료', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   )
                 ],
               ),
@@ -1061,6 +1092,55 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
           }
         );
       }
+    );
+  }
+
+  Widget _buildDetailedPenaltyRow(String title, List<Widget> items) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey.shade700)),
+        const SizedBox(height: 16),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: items,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPenaltyItem(String label, int value, ValueChanged<int> onChanged) {
+    return Column(
+      children: [
+        Text(label, style: const TextStyle(fontSize: 13, color: Colors.blueGrey)),
+        const SizedBox(height: 10),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildRoundIconBtn(Icons.remove, () => onChanged(value > 0 ? value - 1 : 0)),
+            SizedBox(
+              width: 36,
+              child: Text('$value', textAlign: TextAlign.center, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            ),
+            _buildRoundIconBtn(Icons.add, () => onChanged(value + 1)),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRoundIconBtn(IconData icon, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+        child: Icon(icon, size: 18, color: Colors.black87),
+      ),
     );
   }
 
