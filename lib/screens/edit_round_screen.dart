@@ -728,23 +728,23 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
                 padding: EdgeInsets.symmetric(horizontal: 4, vertical: 4),
                 child: Row(
                   children: [
-                    Expanded(flex: 2, child: Text('플레이어', style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.bold))),
-                    Expanded(flex: 2, child: Center(child: Text('스코어', style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.bold)))),
-                    Expanded(flex: 2, child: Center(child: Text('퍼트', style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.bold)))),
-                    Expanded(flex: 2, child: Center(child: Text('벌타', style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.bold)))),
+                    Expanded(flex: 12, child: Text('플레이어', style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.bold))),
+                    Expanded(flex: 23, child: Center(child: Text('스코어', style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.bold)))),
+                    Expanded(flex: 23, child: Center(child: Text('퍼트', style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.bold)))),
+                    Expanded(flex: 23, child: Center(child: Text('벌타', style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.bold)))),
                   ],
                 ),
               ),
               const Divider(height: 8),
               // 사용자 본인
               _buildPlayerScoreRow(
-                name: '나 (Me)', 
+                name: '나', 
                 score: hole.score, 
                 putt: hole.putt, 
                 penalty: hole.penaltyStrokes,
                 onScoreChanged: (v) => setState(() => hole.score = v),
                 onPuttChanged: (v) => setState(() => hole.putt = v),
-                onPenaltyChanged: (v) => setState(() => hole.teeOb = v), // 기본 벌타 증감 (상세는 다이얼로그)
+                onPenaltyChanged: (v) => setState(() => hole.teeOb = v),
                 onPenaltyTap: () => _showPenaltyDialog(context, hole),
                 isUser: true
               ),
@@ -759,7 +759,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
                     onScoreChanged: (v) => setState(() => hole.companionScores[i] = v),
                     onPuttChanged: (v) => setState(() => hole.companionPutts[i] = v),
                     onPenaltyChanged: (v) => setState(() => hole.companionPenalties[i] = v),
-                    onPenaltyTap: () {}, // 동반자는 터치시 아무것도 안함 (간편 카운터만 사용)
+                    onPenaltyTap: () {},
                   ),
                 
                 const Divider(),
@@ -785,11 +785,11 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
     bool isUser = false,
   }) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10), // 상하폭 확대
+      padding: const EdgeInsets.symmetric(vertical: 12), // 상하폭 추가 확대
       child: Row(
         children: [
           Expanded(
-            flex: 2, // 이름 영역 축소
+            flex: 12, // 이름 영역 최소화
             child: Text(
               name, 
               style: TextStyle(
@@ -800,12 +800,12 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
             )
           ),
           // 스코어
-          Expanded(flex: 2, child: _buildMiniCounter(score, onScoreChanged, isScore: true)),
+          Expanded(flex: 23, child: _buildMiniCounter(score, onScoreChanged, isScore: true)),
           // 퍼트
-          Expanded(flex: 2, child: _buildMiniCounter(putt, onPuttChanged, defaultValue: 2)),
+          Expanded(flex: 23, child: _buildMiniCounter(putt, onPuttChanged, defaultValue: 2)),
           // 벌타
           Expanded(
-            flex: 2, 
+            flex: 23, 
             child: isUser 
               ? InkWell(
                   onTap: onPenaltyTap,
@@ -818,14 +818,14 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
                           penalty == 0 ? '-' : '$penalty',
                           style: TextStyle(
                             fontWeight: FontWeight.bold, 
-                            fontSize: 15, // 벌타 텍스트 확대
+                            fontSize: 16, // 벌타 텍스트 확대
                             color: penalty > 0 ? Colors.redAccent : Colors.black87
                           ),
                         ),
                         if (penalty > 0)
                           Text(
                             '상세',
-                            style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
+                            style: TextStyle(fontSize: 10, color: Colors.grey.shade600, fontWeight: FontWeight.bold),
                           ),
                       ],
                     ),
@@ -857,17 +857,17 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
             else onChanged(value - 1);
           },
           child: Container(
-            padding: const EdgeInsets.all(6), // 아이콘 패딩 확대
+            padding: const EdgeInsets.all(8), // 클릭 영역 및 아이콘 배경 확대
             decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.grey.shade100),
-            child: const Icon(Icons.remove, size: 18, color: Colors.black54), // 아이콘 크기 확대
+            child: const Icon(Icons.remove, size: 22, color: Colors.black54), // 아이콘 크기 키움
           ),
         ),
         SizedBox(
-          width: 32, // 텍스트 영역 확대
+          width: 38, // 숫자가 충분히 들어갈 공간 확보
           child: Text(
             display, 
             textAlign: TextAlign.center, 
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: textColor) // 텍스트 크기 확대
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: textColor) // 숫자 크기 키움
           )
         ),
         GestureDetector(
@@ -876,9 +876,9 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
             else onChanged(value + 1);
           },
           child: Container(
-            padding: const EdgeInsets.all(6), // 아이콘 패딩 확대
+            padding: const EdgeInsets.all(8), // 클릭 영역 및 아이콘 배경 확대
             decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.grey.shade100),
-            child: const Icon(Icons.add, size: 18, color: Colors.black54), // 아이콘 크기 확대
+            child: const Icon(Icons.add, size: 22, color: Colors.black54), // 아이콘 크기 키움
           ),
         ),
       ],
@@ -1535,11 +1535,14 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
               children: List.generate(totals.length, (i) {
                 final isPositive = totals[i] >= 0;
                 final amountColor = isPositive ? const Color(0xFF27AE60) : const Color(0xFFE74C3C);
+                final formattedAmount = NumberFormat('#,###').format(totals[i].abs());
+                
                 return Container(
+                  width: 85, // 모든 카드 동일 크기 고정
                   margin: const EdgeInsets.only(right: 10),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                   decoration: BoxDecoration(
-                    color: Colors.white, // 흰색 카드 바탕으로 대비 강화
+                    color: Colors.white,
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: [
                       BoxShadow(
@@ -1554,6 +1557,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
                     ),
                   ),
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end, // 오른쪽 정렬 (회계 방식)
                     children: [
                       Text(
                         allNames[i], 
@@ -1561,7 +1565,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        isPositive ? '+${NumberFormat('#,###').format(totals[i])}' : NumberFormat('#,###').format(totals[i]),
+                        totals[i] == 0 ? '0' : (isPositive ? '+$formattedAmount' : '-$formattedAmount'),
                         style: TextStyle(
                           color: amountColor,
                           fontWeight: FontWeight.bold,
