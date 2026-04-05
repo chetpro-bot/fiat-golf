@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import '../models/round_model.dart';
 import '../services/auth_service.dart';
+import '../services/betting_service.dart';
 
 class EditRoundScreen extends StatefulWidget {
   final RoundData? round; // null이면 신규 생성, 값이 있으면 수정 모드
@@ -27,6 +28,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
   late List<HoleData> _holes;
   int _currentHoleIndex = 0;
   bool _isSaving = false;
+  late OjangConfig _ojangConfig;
   
   // Autocomplete 내부 컨트롤러에 접근하기 위한 참조 변수
   TextEditingController? _internalGolfCourseCtrl;
@@ -73,6 +75,9 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
       );
       _loadLatestRoundAndFill();
     }
+    _ojangConfig = widget.round != null 
+        ? OjangConfig.fromMap(widget.round!.ojangConfig.toMap())
+        : OjangConfig();
   }
 
   Future<void> _loadLatestRoundAndFill() async {
@@ -238,6 +243,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
         createdAt: widget.round?.createdAt ?? DateTime.now(),
         userId: AuthService().currentUser?.uid,
         userName: AuthService().currentUser?.displayName,
+        ojangConfig: _ojangConfig,
       );
 
       await FirebaseFirestore.instance.collection('rounds').doc(docId).set(
@@ -346,6 +352,12 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final List<String> compNames = _companionsCtrl.text
+        .split(',')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.round != null ? '기록 수정' : '기록 추가'),
@@ -512,12 +524,58 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
                             const SizedBox(height: 16),
                             TextFormField(
                               controller: _companionsCtrl,
+                              onChanged: (v) => setState(() {}), // 이름 변경 시 홀별 UI 갱신을 위함
                               decoration: const InputDecoration(
                                 labelText: '동반자 (쉼표로 구분)', 
                                 border: OutlineInputBorder(),
+                                hintText: '예: 김철수, 이영희, 박지민 (최대 3명)',
                               ),
                             ),
                             const SizedBox(height: 16),
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF1A3E3B).withOpacity(0.05),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: const Color(0xFF1A3E3B).withOpacity(0.2)),
+                              ),
+                              child: Column(
+                                children: [
+                                  SwitchListTile(
+                                    title: const Text('오장마스터 활성화', style: TextStyle(fontWeight: FontWeight.bold)),
+                                    subtitle: const Text('타당 정산 및 실시간 후핸디 반영'),
+                                    value: _ojangConfig.enabled,
+                                    onChanged: (v) => setState(() => _ojangConfig.enabled = v),
+                                    activeColor: const Color(0xFFD4AF37),
+                                  ),
+                                  if (_ojangConfig.enabled)
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                                      child: Row(
+                                        children: [
+                                          const Text('타당 단가:', style: TextStyle(fontWeight: FontWeight.w500)),
+                                          const SizedBox(width: 12),
+                                          Expanded(
+                                            child: TextFormField(
+                                              initialValue: _ojangConfig.unitPrice.toString(),
+                                              keyboardType: TextInputType.number,
+                                              decoration: const InputDecoration(
+                                                suffixText: '원',
+                                                isDense: true,
+                                              ),
+                                              onChanged: (v) {
+                                                final val = int.tryParse(v);
+                                                if (val != null) _ojangConfig.unitPrice = val;
+                                              },
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 8),
                           ],
                         ),
                       ),
@@ -579,6 +637,9 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
                   ),
                 ),
               ),
+              // 오장마스터 총 정산 요약
+              if (_ojangConfig.enabled)
+                _buildTotalSettlementSummary(compNames),
               // 하단: 저장 버튼 
               Container(
                 padding: const EdgeInsets.all(16),
@@ -604,99 +665,197 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
   }
 
   Widget _buildHoleList(int start, int end) {
+    // 동반자 이름 리스트 파싱
+    final List<String> compNames = _companionsCtrl.text
+        .split(',')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+
     return ListView.builder(
       padding: const EdgeInsets.only(top: 8, bottom: 80),
       itemCount: end - start,
       itemBuilder: (context, index) {
         final hole = _holes[start + index];
         return Card(
-          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-          elevation: 1,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerLeft,
-              child: Row(
-                children: [
-                  // 홀 번호 표시
-                  SizedBox(
-                    width: 65,
-                    child: Text('${hole.holeNumber} Hole', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                  ),
-                  // Par 선택 영역
-                  const Text('Par', style: TextStyle(color: Colors.grey, fontSize: 14)),
-                  const SizedBox(width: 8),
-                  DropdownButton<int>(
-                    value: hole.par,
-                    underline: Container(
-                      height: 1,
-                      color: Colors.grey.shade400,
+          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: hole.score != -99 ? BorderSide(color: const Color(0xFF1A3E3B).withOpacity(0.3), width: 1) : BorderSide.none,
+          ),
+          child: ExpansionTile(
+            title: Row(
+              children: [
+                SizedBox(
+                  width: 50,
+                  child: Text('${hole.holeNumber}', 
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF1A3E3B))),
+                ),
+                Expanded(
+                  child: Text(
+                    hole.score == -99 ? '미입력' : (hole.score > 0 ? '+${hole.score}' : (hole.score == 0 ? 'Par' : '${hole.score}')),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold, 
+                      color: hole.score == -99 ? Colors.grey : (hole.score <= 0 ? const Color(0xFF1A3E3B) : Colors.redAccent)
                     ),
-                    items: [3, 4, 5].map((e) => DropdownMenuItem(value: e, child: Text('$e', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)))).toList(),
+                  ),
+                ),
+                if (_ojangConfig.enabled && hole.score != -99)
+                  _buildHoleSettlementChip(hole, compNames),
+              ],
+            ),
+            childrenPadding: const EdgeInsets.all(12),
+            initiallyExpanded: false, // 필요시 true로 변경 가능
+            children: [
+              // 1. 기본 홀 설정 (Par)
+              Row(
+                children: [
+                   const Text('Hole Par', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+                   const SizedBox(width: 12),
+                   DropdownButton<int>(
+                    value: hole.par,
+                    items: [3, 4, 5].map((e) => DropdownMenuItem(value: e, child: Text('$e'))).toList(),
                     onChanged: (val) {
                       if(val != null) setState(() => hole.par = val);
                     },
-                  ),
-                  const SizedBox(width: 16),
-                  // Score 컨트롤
-                  _buildCounter('Score', hole.score, (val) {
-                    setState(() => hole.score = val);
-                  }, isOverUnder: true),
-                  const SizedBox(width: 16),
-                  // Putt 컨트롤
-                  _buildCounter('Putt', hole.putt, (val) {
-                    setState(() => hole.putt = val);
-                  }),
-                  const SizedBox(width: 16),
-                  // 페널티 다이얼로그 버튼
-                  GestureDetector(
-                    onTap: () => _showPenaltyDialog(context, hole),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: hole.penaltyStrokes > 0 
-                            ? Colors.red.shade50 
-                            : Colors.grey.shade100,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: hole.penaltyStrokes > 0 
-                              ? Colors.red.shade300 
-                              : Colors.grey.shade300
-                        ),
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.warning_amber_rounded, 
-                            size: 20, 
-                            color: hole.penaltyStrokes > 0 ? Colors.red.shade700 : Colors.grey
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            hole.penaltyStrokes > 0 
-                                ? '${hole.penaltyStrokes} 벌타' 
-                                : '벌타',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: hole.penaltyStrokes > 0 ? Colors.red.shade700 : Colors.grey,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+                   ),
                 ],
               ),
-            ),
+              const Divider(),
+              // 2. 플레이어별 점수 입력
+              _buildPlayerScoreRow('나 (Me)', hole.score, (v) => setState(() => hole.score = v), isUser: true),
+              if (_ojangConfig.enabled) ...[
+                for (int i = 0; i < compNames.length; i++)
+                  _buildPlayerScoreRow(compNames[i], hole.companionScores[i], (v) => setState(() => hole.companionScores[i] = v)),
+                
+                const Divider(),
+                // 3. 내기 이벤트 (니어리스트)
+                _buildBettingEvents(hole, compNames),
+              ],
+              // 4. 유저 상세 (퍼트, 벌타)
+              const Divider(),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildCounter('Putt', hole.putt, (val) => setState(() => hole.putt = val)),
+                  GestureDetector(
+                    onTap: () => _showPenaltyDialog(context, hole),
+                    child: Column(
+                      children: [
+                        Icon(Icons.warning_amber_rounded, color: hole.penaltyStrokes > 0 ? Colors.redAccent : Colors.grey),
+                        Text(hole.penaltyStrokes > 0 ? '${hole.penaltyStrokes} 벌타' : '벌타', style: const TextStyle(fontSize: 12)),
+                      ],
+                    ),
+                  )
+                ],
+              )
+            ],
           ),
         );
       },
     );
   }
+
+  Widget _buildPlayerScoreRow(String name, int value, ValueChanged<int> onChanged, {bool isUser = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Expanded(child: Text(name, style: TextStyle(fontWeight: isUser ? FontWeight.bold : FontWeight.normal))),
+          _buildCounterSmall(value, onChanged, isOverUnder: true),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCounterSmall(int value, ValueChanged<int> onChanged, {bool isOverUnder = false}) {
+    String display = (value == -99) ? '-' : (isOverUnder && value > 0 ? '+$value' : '$value');
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton(icon: const Icon(Icons.remove_circle_outline, size: 24, color: Colors.redAccent), onPressed: () {
+          if (value == -99) onChanged(0);
+          else onChanged(value - 1);
+        }),
+        SizedBox(width: 30, child: Text(display, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.bold))),
+        IconButton(icon: const Icon(Icons.add_circle_outline, size: 24, color: Color(0xFFD4AF37)), onPressed: () {
+          if (value == -99) onChanged(0);
+          else onChanged(value + 1);
+        }),
+      ],
+    );
+  }
+
+  Widget _buildBettingEvents(HoleData hole, List<String> compNames) {
+    List<String> allPlayers = ['나', ...compNames];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('🎯 니어리스트', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF667C7A))),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          children: List.generate(allPlayers.length, (i) {
+            bool isSelected = hole.nearestPlayerIndex == i;
+            return ChoiceChip(
+              label: Text(allPlayers[i]),
+              selected: isSelected,
+              onSelected: (v) => setState(() => hole.nearestPlayerIndex = v ? i : -1),
+              selectedColor: const Color(0xFFD4AF37).withOpacity(0.3),
+            );
+          }),
+        ),
+        if (hole.nearestPlayerIndex != -1) ...[
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              const Text('지우기 성공:', style: TextStyle(fontSize: 12)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Wrap(
+                  spacing: 4,
+                  children: List.generate(allPlayers.length, (i) {
+                    if (hole.nearestPlayerIndex == i) return const SizedBox.shrink();
+                    bool isErased = hole.nearestErasePlayerIndex == i;
+                    return ChoiceChip(
+                      label: Text(allPlayers[i], style: const TextStyle(fontSize: 11)),
+                      selected: isErased,
+                      onSelected: (v) => setState(() => hole.nearestErasePlayerIndex = v ? i : -1),
+                    );
+                  }),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildHoleSettlementChip(HoleData hole, List<String> compNames) {
+    if (hole.companionScores.any((s) => s == -99)) return const SizedBox.shrink();
+    
+    final result = BettingService.calculateHole(hole, _ojangConfig, 1 + compNames.length);
+    final myGain = result.netGains[0];
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: myGain >= 0 ? const Color(0xFF1A3E3B).withOpacity(0.1) : Colors.red.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        myGain >= 0 ? '+${NumberFormat('#,###').format(myGain)}' : NumberFormat('#,###').format(myGain),
+        style: TextStyle(
+          fontSize: 12, 
+          fontWeight: FontWeight.bold, 
+          color: myGain >= 0 ? const Color(0xFF1A3E3B) : Colors.redAccent
+        ),
+      ),
+    );
+  }
+
 
   // 보다 슬림해진 +/- 구조 UI 컨트롤러 위젯 
   Widget _buildCounter(String label, int value, ValueChanged<int> onChanged, {bool isOverUnder = false}) {
@@ -1162,5 +1321,79 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
         ),
       ),
     );
+    );
+  }
+
+  Widget _buildTotalSettlementSummary(List<String> compNames) {
+    if (widget.round == null && _holes.every((h) => h.score == -99)) return const SizedBox.shrink();
+    
+    // 임시 RoundData 생성하여 총액 계산
+    final tempRound = RoundData(
+      date: _selectedDate,
+      teeUpTime: '',
+      golfCourseName: '',
+      frontCourseName: '',
+      backCourseName: '',
+      companions: compNames,
+      totalScore: 0,
+      holes: _holes,
+      createdAt: DateTime.now(),
+      ojangConfig: _ojangConfig,
+    );
+    
+    final totals = BettingService.calculateTotal(tempRound);
+    final List<String> allNames = ['나', ...compNames];
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1A3E3B),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4, offset: const Offset(0, -2))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.account_balance_wallet, color: Color(0xFFD4AF37), size: 16),
+              SizedBox(width: 8),
+              Text('오장마스터 최종 정산', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: List.generate(totals.length, (i) {
+                final isPositive = totals[i] >= 0;
+                return Container(
+                  margin: const EdgeInsets.only(right: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: isPositive ? const Color(0xFFD4AF37).withOpacity(0.5) : Colors.redAccent.withOpacity(0.5)),
+                  ),
+                  child: Column(
+                    children: [
+                      Text(allNames[i], style: const TextStyle(color: Colors.white, fontSize: 11)),
+                      Text(
+                        isPositive ? '+${NumberFormat('#,###').format(totals[i])}' : NumberFormat('#,###').format(totals[i]),
+                        style: TextStyle(
+                          color: isPositive ? const Color(0xFFD4AF37) : Colors.redAccent,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
+
