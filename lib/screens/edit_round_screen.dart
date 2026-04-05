@@ -1488,26 +1488,27 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: const Color(0xFF1A1F2B), // 프리미엄 다크 네이비
+        color: const Color(0xFFF0F4F8), // 부드러운 블루 그레이 바탕
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.3), 
-            blurRadius: 12, 
+            color: Colors.black.withOpacity(0.08), 
+            blurRadius: 10, 
             offset: const Offset(0, -4)
           )
         ],
+        border: const Border(top: BorderSide(color: Color(0xFFD1D9E6), width: 1)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.stars, color: Color(0xFFD4AF37), size: 18), // 금색 스타 아이콘
+              const Icon(Icons.calculate, color: Color(0xFF2C3E50), size: 18),
               const SizedBox(width: 8),
               const Text(
-                '오장마스터 실시간 정산', 
+                '오장마스터 정산 현황', 
                 style: TextStyle(
-                  color: Colors.white, 
+                  color: Color(0xFF2C3E50), 
                   fontWeight: FontWeight.bold, 
                   fontSize: 15,
                   letterSpacing: -0.5
@@ -1517,10 +1518,10 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFD4AF37).withOpacity(0.2),
+                  color: const Color(0xFF3498DB),
                   borderRadius: BorderRadius.circular(4),
                 ),
-                child: const Text('LIVE', style: TextStyle(color: Color(0xFFD4AF37), fontSize: 10, fontWeight: FontWeight.bold)),
+                child: const Text('LIVE', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
               )
             ],
           ),
@@ -1530,23 +1531,30 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
             child: Row(
               children: List.generate(totals.length, (i) {
                 final isPositive = totals[i] >= 0;
-                final amountColor = isPositive ? const Color(0xFFF1C40F) : const Color(0xFFE74C3C);
+                final amountColor = isPositive ? const Color(0xFF27AE60) : const Color(0xFFE74C3C);
                 return Container(
                   margin: const EdgeInsets.only(right: 10),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.05),
-                    borderRadius: BorderRadius.circular(10),
+                    color: Colors.white, // 흰색 카드 바탕으로 대비 강화
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      )
+                    ],
                     border: Border.all(
-                      color: isPositive ? const Color(0xFFD4AF37).withOpacity(0.3) : const Color(0xFFE74C3C).withOpacity(0.3),
-                      width: 1
+                      color: isPositive ? const Color(0xFF27AE60).withOpacity(0.3) : const Color(0xFFE74C3C).withOpacity(0.3),
+                      width: 1.5
                     ),
                   ),
                   child: Column(
                     children: [
                       Text(
                         allNames[i], 
-                        style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 11)
+                        style: const TextStyle(color: Color(0xFF5D6D7E), fontSize: 11, fontWeight: FontWeight.w600)
                       ),
                       const SizedBox(height: 4),
                       Text(
