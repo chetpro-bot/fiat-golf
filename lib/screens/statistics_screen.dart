@@ -181,11 +181,11 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('총 $totalRounds 라운드 분석', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.indigo)),
+            Text('총 $totalRounds 라운드 분석', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1A3E3B))),
           ],
         ),
         const SizedBox(height: 16),
-        _buildSummaryCard('평균 Q-Point', '${avgQPoint.toStringAsFixed(1)}pt', Icons.star, Colors.blue),
+        _buildSummaryCard('평균 Q-Point', '${avgQPoint.toStringAsFixed(1)}pt', Icons.stars, const Color(0xFFD4AF37)),
         const SizedBox(height: 12),
         Card(
           elevation: 2,
@@ -195,7 +195,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('📊 기본 통계', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.indigo)),
+                const Text('📊 기본 통계', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1A3E3B))),
                 const Divider(height: 24),
                 Table(
                   border: TableBorder.all(color: Colors.grey.shade300),
@@ -211,7 +211,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                const Text('퍼트 통계', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
+                const Text('퍼트 통계', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF667C7A))),
                 const SizedBox(height: 8),
                 Table(
                   border: TableBorder.all(color: Colors.grey.shade300),
@@ -236,7 +236,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                const Text('패널티 통계', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
+                const Text('패널티 통계', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF667C7A))),
                 const SizedBox(height: 8),
                 Table(
                   border: TableBorder.all(color: Colors.grey.shade300),
@@ -279,7 +279,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(title, style: const TextStyle(fontSize: 12, color: Colors.blueGrey, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+          Text(title, style: const TextStyle(fontSize: 12, color: Color(0xFF667C7A), fontWeight: FontWeight.bold), textAlign: TextAlign.center),
           const SizedBox(height: 6),
           if (value is Widget)
             value
@@ -384,7 +384,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   }
 
   Widget _buildParStat(String title, double avg, double parTarget) {
-    Color col = avg > parTarget ? Colors.red.shade400 : Colors.blue.shade600;
+    Color col = avg > parTarget ? Colors.redAccent : const Color(0xFF1A3E3B);
     return Column(
       children: [
         Text(title, style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
@@ -405,11 +405,11 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
           children: [
             const Text('스코어 분포도 (라운드당 평균)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
-            _buildDistBar('Birdie', dist['Birdie']!, total, rounds, Colors.blue),
-            _buildDistBar('Par', dist['Par']!, total, rounds, Colors.teal),
-            _buildDistBar('Bogey', dist['Bogey']!, total, rounds, Colors.orange),
-            _buildDistBar('Double', dist['Double']!, total, rounds, Colors.deepOrange),
-            _buildDistBar('Triple+', dist['Triple+']!, total, rounds, Colors.red),
+            _buildDistBar('Birdie', dist['Birdie']!, total, rounds, const Color(0xFFD4AF37)),
+            _buildDistBar('Par', dist['Par']!, total, rounds, const Color(0xFF3B6661)),
+            _buildDistBar('Bogey', dist['Bogey']!, total, rounds, const Color(0xFF8BA3A0)),
+            _buildDistBar('Double', dist['Double']!, total, rounds, Colors.deepOrangeAccent),
+            _buildDistBar('Triple+', dist['Triple+']!, total, rounds, Colors.redAccent),
           ],
         ),
       ),

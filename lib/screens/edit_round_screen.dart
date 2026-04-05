@@ -530,7 +530,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
                               Text('홀별 스코어', style: Theme.of(context).textTheme.titleLarge),
                               Text(
                                 '$_totalGross($_overUnderStr), $_totalPutt putt', 
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.indigo),
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF1A3E3B)),
                               ),
                             ],
                           ),
@@ -541,10 +541,10 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
                         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
                         elevation: 0,
                         toolbarHeight: 0,
-                        bottom: TabBar(
-                          labelColor: Colors.indigo,
+                        bottom: const TabBar(
+                          labelColor: Color(0xFF1A3E3B),
                           unselectedLabelColor: Colors.grey,
-                          indicatorColor: Colors.indigo,
+                          indicatorColor: Color(0xFF1A3E3B),
                           tabs: [
                             Tab(
                               child: ValueListenableBuilder<TextEditingValue>(
@@ -593,7 +593,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
                   onPressed: _isSaving ? null : _saveRecord,
                   child: _isSaving
                       ? const CircularProgressIndicator(color: Colors.white)
-                      : Text(widget.round != null ? '수정하기' : '저장하기', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      : Text(widget.round != null ? '기록 수정' : '기록 저장', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 ),
               )
             ],
@@ -735,7 +735,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
                   onChanged(value + 1);
                 }
               },
-              child: const Icon(Icons.add_circle, color: Colors.blueAccent, size: 28),
+              child: const Icon(Icons.add_circle, color: Color(0xFFD4AF37), size: 28),
             ),
           ],
         ),
@@ -762,7 +762,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
             ),
             InkWell(
               onTap: () => onChanged(value + 1),
-              child: const Icon(Icons.add_circle, color: Colors.orange, size: 36),
+              child: const Icon(Icons.add_circle, color: Color(0xFFD4AF37), size: 36),
             ),
           ],
         ),

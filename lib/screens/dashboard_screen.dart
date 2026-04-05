@@ -173,7 +173,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       children: [
                         Text(
                           '${DateFormat('yyyy-MM-dd').format(round.date)}  ${round.teeUpTime}',
-                          style: const TextStyle(fontSize: 13, color: Colors.blueGrey),
+                          style: const TextStyle(fontSize: 13, color: Color(0xFF667C7A)),
                         ),
                         if (round.companions.isNotEmpty)
                           Text(
@@ -188,7 +188,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   trailing: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: Colors.blue.shade50,
+                      color: const Color(0xFF1A3E3B).withOpacity(0.05),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Column(
@@ -208,15 +208,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
-                              color: Colors.blue.shade100,
+                              color: const Color(0xFFD4AF37).withOpacity(0.2),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
                               'Q-Point: ${round.qPoint}',
-                              style: TextStyle(
+                              style: const TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 12,
-                                color: Colors.blue.shade900,
+                                color: Color(0xFF997D21),
                               ),
                             ),
                           ),
@@ -290,7 +290,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(title, style: const TextStyle(fontSize: 14)),
-            Text(achieved ? 'SUCCESS' : 'FAIL', style: TextStyle(color: achieved ? Colors.blue : Colors.red, fontWeight: FontWeight.bold, fontSize: 14)),
+            Text(achieved ? 'SUCCESS' : 'FAIL', style: TextStyle(color: achieved ? const Color(0xFF1A3E3B) : Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 14)),
           ],
         ),
       );
@@ -355,7 +355,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              style: TextButton.styleFrom(foregroundColor: Colors.blue),
+              style: TextButton.styleFrom(foregroundColor: const Color(0xFF1A3E3B)),
               child: const Text('닫기')
             )
           ],

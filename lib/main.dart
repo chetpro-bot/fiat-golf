@@ -22,13 +22,35 @@ class GolfScoreApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'FIAT GOLF',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.blue,
-          primary: Colors.blue.shade600,
-          secondary: Colors.lightBlue.shade300,
-        ),
         useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF1A3E3B), // Premium Deep Green
+          primary: const Color(0xFF1A3E3B),
+          secondary: const Color(0xFFD4AF37), // Luxury Gold
+          onPrimary: Colors.white,
+          surface: Colors.white,
+          background: const Color(0xFFF8F9FA), // Clean Background
+        ),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFF1A3E3B),
+          foregroundColor: Colors.white,
+          elevation: 0,
+          centerTitle: true,
+        ),
+        cardTheme: CardTheme(
+          elevation: 2,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          color: Colors.white,
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF1A3E3B),
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        ),
       ),
       home: StreamBuilder<User?>(
         stream: AuthService().userState,
