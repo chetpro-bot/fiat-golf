@@ -178,28 +178,50 @@ class _EditCourseScreenState extends State<EditCourseScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.docId == null ? '골프장 추가' : '골프장 수정'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.check),
-            onPressed: _isSaving ? null : _saveCourse,
-          )
-        ],
       ),
-      body: _isSaving
-          ? const Center(child: CircularProgressIndicator())
-          : Form(
-              key: _formKey,
-              child: ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  TextFormField(
-                    controller: _nameCtrl,
-                    decoration: const InputDecoration(
-                      labelText: '골프장명 (예: 안양CC)',
-                      border: OutlineInputBorder(),
-                    ),
-                    validator: (val) => val == null || val.trim().isEmpty ? '골프장 이름을 입력하세요' : null,
-                  ),
+      bottomNavigationBar: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, -5),
+            ),
+          ],
+        ),
+        child: ElevatedButton(
+          onPressed: _isSaving ? null : _saveCourse,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF27AE60),
+            foregroundColor: Colors.white,
+            minimumSize: const Size.fromHeight(56),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            elevation: 0,
+          ),
+          child: _isSaving
+              ? const SizedBox(
+                  height: 24,
+                  width: 24,
+                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                )
+              : const Text('저장하기', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        ),
+      ),
+      body: Form(
+        key: _formKey,
+        child: ListView(
+          padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 32),
+          children: [
+            TextFormField(
+              controller: _nameCtrl,
+              decoration: const InputDecoration(
+                labelText: '골프장명 (예: 안양CC)',
+                border: OutlineInputBorder(),
+              ),
+              validator: (val) => val == null || val.trim().isEmpty ? '골프장 이름을 입력하세요' : null,
+            ),
                   const SizedBox(height: 16),
                   Row(
                     children: [
