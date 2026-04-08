@@ -371,7 +371,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.round != null ? '기록 수정 (v1.0.6)' : '기록 추가 (v1.0.6)'),
+        title: Text(widget.round != null ? '기록 수정 (v1.0.7)' : '기록 추가 (v1.0.7)'),
         actions: widget.round != null ? [
           IconButton(
             icon: const Icon(Icons.delete, color: Colors.redAccent),
@@ -709,10 +709,10 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
                 ),
                 Expanded(
                   child: Text(
-                    hole.score == -99 ? '미입력' : (hole.score > 0 ? '+${hole.score}' : (hole.score == 0 ? 'Par' : '${hole.score}')),
+                    _getScoreLabel(hole.score),
                     style: TextStyle(
                       fontWeight: FontWeight.bold, 
-                      color: hole.score == -99 ? Colors.grey : (hole.score < 0 ? Colors.red : (hole.score == 0 ? Colors.black87 : Colors.blue))
+                      color: _getScoreColor(hole.score)
                     ),
                   ),
                 ),
@@ -1803,6 +1803,24 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
         ],
       ),
     );
+  }
+  String _getScoreLabel(int score) {
+    if (score == -99) return '미입력';
+    if (score <= -3) return 'Albatross';
+    if (score == -2) return 'Eagle';
+    if (score == -1) return 'Birdie';
+    if (score == 0) return 'Par';
+    if (score == 1) return 'Bogey';
+    if (score == 2) return 'Double Bogey';
+    if (score == 3) return 'Triple Bogey';
+    if (score == 4) return 'Quadruple Bogey';
+    return (score > 0) ? '+$score' : '$score';
+  }
+
+  Color _getScoreColor(int score) {
+    if (score == -99) return Colors.grey;
+    if (score < 0) return Colors.red;
+    return Colors.black87;
   }
 }
 
