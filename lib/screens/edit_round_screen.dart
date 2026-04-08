@@ -29,6 +29,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
   int _currentHoleIndex = 0;
   bool _isSaving = false;
   late OjangConfig _ojangConfig;
+  int _selectedScorecardPlayerIndex = 0;
   
   // Autocomplete 내부 컨트롤러에 접근하기 위한 참조 변수
   TextEditingController? _internalGolfCourseCtrl;
@@ -1160,11 +1161,56 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
   }
 
   Widget _buildScorecardTab() {
+    final compNames = _companionsCtrl.text
+        .split(',')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+    List<String> players = ['나'];
+    if (_ojangConfig.enabled) players.addAll(compNames);
+    
+    // Ensure index is within bounds
+    if (_selectedScorecardPlayerIndex >= players.length) {
+      _selectedScorecardPlayerIndex = 0;
+    }
+
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // 선수 선택 칩
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.only(left: 8.0, bottom: 16.0),
+            child: Row(
+              children: players.asMap().entries.map((e) {
+                final idx = e.key;
+                final name = e.value;
+                final isSelected = _selectedScorecardPlayerIndex == idx;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8.0),
+                  child: ChoiceChip(
+                    label: Text(name),
+                    selected: isSelected,
+                    onSelected: (bool selected) {
+                      if (selected) {
+                        setState(() {
+                          _selectedScorecardPlayerIndex = idx;
+                        });
+                      }
+                    },
+                    selectedColor: const Color(0xFF27AE60).withOpacity(0.2),
+                    labelStyle: TextStyle(
+                      color: isSelected ? const Color(0xFF27AE60) : Colors.black87,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+          
           ValueListenableBuilder<TextEditingValue>(
             valueListenable: _frontCourseCtrl,
             builder: (context, value, child) {
@@ -1175,7 +1221,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
               );
             },
           ),
-          _buildScorecardGrid(_holes, 0),
+          _buildPersonalScorecardGrid(_holes, 0, _selectedScorecardPlayerIndex),
           const SizedBox(height: 24),
           ValueListenableBuilder<TextEditingValue>(
             valueListenable: _backCourseCtrl,
@@ -1187,15 +1233,15 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
               );
             },
           ),
-          _buildScorecardGrid(_holes, 9),
-          _buildRoundStatistics(_holes),
+          _buildPersonalScorecardGrid(_holes, 9, _selectedScorecardPlayerIndex),
+          _buildPersonalRoundStatistics(_holes, _selectedScorecardPlayerIndex),
           const SizedBox(height: 80), // 여백 확보
         ],
       ),
     );
   }
 
-  Widget _buildRoundStatistics(List<HoleData> holes) {
+  Widget _buildPersonalRoundStatistics(List<HoleData> holes, int playerIndex) {
     if (holes.isEmpty) return const SizedBox();
     
     int girHits = 0;
@@ -1216,26 +1262,40 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
     int secondHazardCount = 0;
 
     for (var hole in holes) {
-      totalPutts += hole.putt;
-      totalPenaltyStrokes += hole.penaltyStrokes;
+      int score = 0;
+      int putt = 0;
+      int penalty = 0;
       
-      teeObCount += hole.teeOb;
-      secondObCount += hole.secondOb;
-      teeHazardCount += hole.teeHazard;
-      secondHazardCount += hole.secondHazard;
+      if (playerIndex == 0) {
+        score = hole.score == -99 ? 0 : hole.score;
+        putt = hole.putt == -99 ? 0 : hole.putt;
+        penalty = hole.penaltyStrokes;
+        teeObCount += hole.teeOb;
+        secondObCount += hole.secondOb;
+        teeHazardCount += hole.teeHazard;
+        secondHazardCount += hole.secondHazard;
+      } else {
+        int compIdx = playerIndex - 1;
+        score = (hole.companionScores.length > compIdx && hole.companionScores[compIdx] != -99) ? hole.companionScores[compIdx] : 0;
+        putt = (hole.companionPutts.length > compIdx && hole.companionPutts[compIdx] != -99) ? hole.companionPutts[compIdx] : 0;
+        penalty = hole.companionPenalties.length > compIdx ? hole.companionPenalties[compIdx] : 0;
+      }
       
-      if (hole.putt == 1) onePuttCount++;
-      else if (hole.putt == 2) twoPuttCount++;
-      else if (hole.putt >= 3) threePlusPuttCount++;
+      totalPutts += putt;
+      totalPenaltyStrokes += penalty;
+      
+      if (putt == 1) onePuttCount++;
+      else if (putt == 2) twoPuttCount++;
+      else if (putt >= 3) threePlusPuttCount++;
 
-      bool isGir = (hole.score - hole.putt) <= -2;
+      bool isGir = (score - putt) <= -2;
       if (isGir) {
         girHits++;
-        girPutts += hole.putt;
+        girPutts += putt;
       } else {
         scramblingChances++;
-        nonGirPutts += hole.putt;
-        if (hole.score <= 0) scramblingSuccesses++;
+        nonGirPutts += putt;
+        if (score <= 0) scramblingSuccesses++;
       }
     }
 
@@ -1253,7 +1313,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('⛳ 라운드 통계', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.indigo)),
+            const Text('⛳ 개인 라운드 통계', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.indigo)),
             const Divider(height: 24),
             Table(
               border: TableBorder.all(color: Colors.grey.shade300),
@@ -1304,8 +1364,13 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
                   decoration: BoxDecoration(color: Colors.grey.shade50),
                   children: [
                     _buildStatCell('합계 (벌타)', '$totalPenaltyStrokes'),
-                    _buildStatCell('티샷 벌타', _buildPenaltyValue(teeObCount, teeHazardCount)),
-                    _buildStatCell('세컨샷 벌타', _buildPenaltyValue(secondObCount, secondHazardCount)),
+                    if (playerIndex == 0) ...[
+                      _buildStatCell('티샷 벌타', _buildPenaltyValue(teeObCount, teeHazardCount)),
+                      _buildStatCell('세컨샷 벌타', _buildPenaltyValue(secondObCount, secondHazardCount)),
+                    ] else ...[
+                      _buildStatCell('티샷 벌타', '-'),
+                      _buildStatCell('세컨샷 벌타', '-'),
+                    ]
                   ],
                 ),
               ],
@@ -1364,19 +1429,25 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
     );
   }
 
-  Widget _buildScorecardGrid(List<HoleData> holes, int startIndex) {
+  Widget _buildPersonalScorecardGrid(List<HoleData> holes, int startIndex, int playerIndex) {
     if (holes.length < startIndex + 9) return const SizedBox(); 
 
     final subHoles = holes.sublist(startIndex, startIndex + 9);
     final totalPar = subHoles.fold(0, (total, h) => total + h.par);
-    final totalScore = subHoles.fold(0, (total, h) => total + (h.score == -99 ? 0 : h.score));
-    final totalPutt = subHoles.fold(0, (total, h) => total + (h.putt == -99 ? 0 : h.putt));
     
-    final compNames = _companionsCtrl.text
-        .split(',')
-        .map((e) => e.trim())
-        .where((e) => e.isNotEmpty)
-        .toList();
+    int totalScore = 0;
+    int totalPutt = 0;
+    
+    for (var h in subHoles) {
+      if (playerIndex == 0) {
+        totalScore += (h.score == -99 ? 0 : h.score);
+        totalPutt += (h.putt == -99 ? 0 : h.putt);
+      } else {
+        int compIdx = playerIndex - 1;
+        totalScore += (h.companionScores.length > compIdx && h.companionScores[compIdx] != -99 ? h.companionScores[compIdx] : 0);
+        totalPutt += (h.companionPutts.length > compIdx && h.companionPutts[compIdx] != -99 ? h.companionPutts[compIdx] : 0);
+      }
+    }
 
     return Table(
       border: TableBorder.all(color: Colors.grey.shade300, width: 1),
@@ -1403,48 +1474,32 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
         ),
         TableRow(
           children: [
-            _buildGridCell('나(스코어)', isHeader: true),
-            for (var h in subHoles) _buildGridScoreCell(h.score == -99 ? 0 : h.score),
+            _buildGridCell('SCORE', isHeader: true),
+            for (var h in subHoles) _buildGridScoreCell(_getPlayerScore(h, playerIndex)),
             _buildGridScoreCell(totalScore, isBold: true, isTotal: true),
           ],
         ),
         TableRow(
           children: [
-            _buildGridCell('나(퍼트)', isHeader: true),
-            for (var h in subHoles) _buildGridCell('${h.putt == -99 ? 0 : h.putt}'),
+            _buildGridCell('PUTT', isHeader: true),
+            for (var h in subHoles) _buildGridCell('${_getPlayerPutt(h, playerIndex)}'),
             _buildGridCell('$totalPutt', isBold: true),
           ],
         ),
-        if (_ojangConfig.enabled)
-          for (int c = 0; c < compNames.length; c++) ...[
-            TableRow(
-              children: [
-                _buildGridCell('${compNames[c]}(스코어)', isHeader: true),
-                for (var h in subHoles) _buildGridScoreCell(
-                  (h.companionScores.length > c && h.companionScores[c] != -99) ? h.companionScores[c] : 0
-                ),
-                _buildGridScoreCell(
-                  subHoles.fold(0, (sum, h) => sum + ((h.companionScores.length > c && h.companionScores[c] != -99) ? h.companionScores[c] : 0)),
-                  isBold: true,
-                  isTotal: true
-                ),
-              ],
-            ),
-            TableRow(
-              children: [
-                _buildGridCell('${compNames[c]}(퍼트)', isHeader: true),
-                for (var h in subHoles) _buildGridCell(
-                  '${(h.companionPutts.length > c && h.companionPutts[c] != -99) ? h.companionPutts[c] : 0}'
-                ),
-                _buildGridCell(
-                  '${subHoles.fold(0, (sum, h) => sum + ((h.companionPutts.length > c && h.companionPutts[c] != -99) ? h.companionPutts[c] : 0))}',
-                  isBold: true
-                ),
-              ],
-            ),
-          ],
       ],
     );
+  }
+  
+  int _getPlayerScore(HoleData h, int playerIndex) {
+    if (playerIndex == 0) return h.score == -99 ? 0 : h.score;
+    int cIdx = playerIndex - 1;
+    return (h.companionScores.length > cIdx && h.companionScores[cIdx] != -99) ? h.companionScores[cIdx] : 0;
+  }
+
+  int _getPlayerPutt(HoleData h, int playerIndex) {
+    if (playerIndex == 0) return h.putt == -99 ? 0 : h.putt;
+    int cIdx = playerIndex - 1;
+    return (h.companionPutts.length > cIdx && h.companionPutts[cIdx] != -99) ? h.companionPutts[cIdx] : 0;
   }
 
   Widget _buildGridCell(String text, {bool isHeader = false, bool isBold = false}) {
