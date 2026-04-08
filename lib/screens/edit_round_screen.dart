@@ -1166,7 +1166,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
         .map((e) => e.trim())
         .where((e) => e.isNotEmpty)
         .toList();
-    List<String> players = ['나'];
+    List<String> players = ['전체', '나'];
     if (_ojangConfig.enabled) players.addAll(compNames);
     
     // Ensure index is within bounds
@@ -1242,7 +1242,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
   }
 
   Widget _buildPersonalRoundStatistics(List<HoleData> holes, int playerIndex) {
-    if (holes.isEmpty) return const SizedBox();
+    if (holes.isEmpty || playerIndex == 0) return const SizedBox();
     
     int girHits = 0;
     int scramblingChances = 0;
@@ -1266,7 +1266,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
       int putt = 0;
       int penalty = 0;
       
-      if (playerIndex == 0) {
+      if (playerIndex == 1) {
         score = hole.score == -99 ? 0 : hole.score;
         putt = hole.putt == -99 ? 0 : hole.putt;
         penalty = hole.penaltyStrokes;
@@ -1275,7 +1275,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
         teeHazardCount += hole.teeHazard;
         secondHazardCount += hole.secondHazard;
       } else {
-        int compIdx = playerIndex - 1;
+        int compIdx = playerIndex - 2;
         score = (hole.companionScores.length > compIdx && hole.companionScores[compIdx] != -99) ? hole.companionScores[compIdx] : 0;
         putt = (hole.companionPutts.length > compIdx && hole.companionPutts[compIdx] != -99) ? hole.companionPutts[compIdx] : 0;
         penalty = hole.companionPenalties.length > compIdx ? hole.companionPenalties[compIdx] : 0;
@@ -1364,7 +1364,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
                   decoration: BoxDecoration(color: Colors.grey.shade50),
                   children: [
                     _buildStatCell('합계 (벌타)', '$totalPenaltyStrokes'),
-                    if (playerIndex == 0) ...[
+                    if (playerIndex == 1) ...[
                       _buildStatCell('티샷 벌타', _buildPenaltyValue(teeObCount, teeHazardCount)),
                       _buildStatCell('세컨샷 벌타', _buildPenaltyValue(secondObCount, secondHazardCount)),
                     ] else ...[
@@ -1435,15 +1435,71 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
     final subHoles = holes.sublist(startIndex, startIndex + 9);
     final totalPar = subHoles.fold(0, (total, h) => total + h.par);
     
+    if (playerIndex == 0) {
+      final compNames = _companionsCtrl.text
+          .split(',')
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .toList();
+      final allNames = ['나'];
+      if (_ojangConfig.enabled) allNames.addAll(compNames);
+      
+      final rows = <TableRow>[];
+      rows.add(
+        TableRow(
+          decoration: BoxDecoration(color: Colors.grey.shade100),
+          children: [
+            _buildGridCell('HOLE', isHeader: true),
+            for (int i = 1; i <= 9; i++) _buildGridCell('${startIndex + i}', isHeader: true),
+            _buildGridCell('TOTAL', isHeader: true),
+          ],
+        ),
+      );
+      rows.add(
+        TableRow(
+          children: [
+            _buildGridCell('PAR', isHeader: true),
+            for (var h in subHoles) _buildGridCell('${h.par}'),
+            _buildGridCell('$totalPar', isBold: true),
+          ],
+        ),
+      );
+      
+      for (int i = 0; i < allNames.length; i++) {
+        int tempTotal = 0;
+        for (var h in subHoles) tempTotal += _getPlayerScore(h, i + 1);
+        
+        rows.add(
+          TableRow(
+            children: [
+              _buildGridCell(allNames[i], isHeader: true),
+              for (var h in subHoles) _buildGridScoreCell(_getPlayerScore(h, i + 1)),
+              _buildGridScoreCell(tempTotal, isBold: true, isTotal: true),
+            ],
+          )
+        );
+      }
+      
+      return Table(
+        border: TableBorder.all(color: Colors.grey.shade300, width: 1),
+        columnWidths: const {
+          0: FlexColumnWidth(1.8),
+          10: FlexColumnWidth(1.6),
+        },
+        defaultColumnWidth: const FlexColumnWidth(1.0),
+        children: rows,
+      );
+    }
+    
     int totalScore = 0;
     int totalPutt = 0;
     
     for (var h in subHoles) {
-      if (playerIndex == 0) {
+      if (playerIndex == 1) {
         totalScore += (h.score == -99 ? 0 : h.score);
         totalPutt += (h.putt == -99 ? 0 : h.putt);
       } else {
-        int compIdx = playerIndex - 1;
+        int compIdx = playerIndex - 2;
         totalScore += (h.companionScores.length > compIdx && h.companionScores[compIdx] != -99 ? h.companionScores[compIdx] : 0);
         totalPutt += (h.companionPutts.length > compIdx && h.companionPutts[compIdx] != -99 ? h.companionPutts[compIdx] : 0);
       }
@@ -1491,14 +1547,14 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
   }
   
   int _getPlayerScore(HoleData h, int playerIndex) {
-    if (playerIndex == 0) return h.score == -99 ? 0 : h.score;
-    int cIdx = playerIndex - 1;
+    if (playerIndex == 1) return h.score == -99 ? 0 : h.score;
+    int cIdx = playerIndex - 2;
     return (h.companionScores.length > cIdx && h.companionScores[cIdx] != -99) ? h.companionScores[cIdx] : 0;
   }
 
   int _getPlayerPutt(HoleData h, int playerIndex) {
-    if (playerIndex == 0) return h.putt == -99 ? 0 : h.putt;
-    int cIdx = playerIndex - 1;
+    if (playerIndex == 1) return h.putt == -99 ? 0 : h.putt;
+    int cIdx = playerIndex - 2;
     return (h.companionPutts.length > cIdx && h.companionPutts[cIdx] != -99) ? h.companionPutts[cIdx] : 0;
   }
 
