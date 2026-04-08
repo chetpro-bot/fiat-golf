@@ -371,7 +371,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.round != null ? '기록 수정 (v1.0.4)' : '기록 추가 (v1.0.4)'),
+        title: Text(widget.round != null ? '기록 수정 (v1.0.5)' : '기록 추가 (v1.0.5)'),
         actions: widget.round != null ? [
           IconButton(
             icon: const Icon(Icons.delete, color: Colors.redAccent),
