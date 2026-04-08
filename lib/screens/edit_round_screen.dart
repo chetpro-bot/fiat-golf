@@ -599,7 +599,11 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
                               Text('홀별 스코어', style: Theme.of(context).textTheme.titleLarge),
                               Text(
                                 '$_totalGross($_overUnderStr), $_totalPutt putt', 
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF27AE60)),
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold, 
+                                  fontSize: 18, 
+                                  color: _overUnder < 0 ? Colors.red : (_overUnder == 0 ? Colors.black87 : Colors.blue)
+                                ),
                               ),
                             ],
                           ),
@@ -708,7 +712,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
                     hole.score == -99 ? '미입력' : (hole.score > 0 ? '+${hole.score}' : (hole.score == 0 ? 'Par' : '${hole.score}')),
                     style: TextStyle(
                       fontWeight: FontWeight.bold, 
-                      color: hole.score == -99 ? Colors.grey : (hole.score <= 0 ? const Color(0xFF27AE60) : Colors.redAccent)
+                      color: hole.score == -99 ? Colors.grey : (hole.score < 0 ? Colors.red : (hole.score == 0 ? Colors.black87 : Colors.blue))
                     ),
                   ),
                 ),
@@ -1574,23 +1578,17 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
   }
 
   Widget _buildGridScoreCell(int score, {bool isBold = false, bool isTotal = false}) {
-    Color bgColor = Colors.transparent;
     String text = score == 0 ? '0' : (score > 0 ? '+$score' : '$score');
     
-    if (isTotal) {
-      bgColor = Colors.transparent; // TOTAL 칼럼은 배경색 없음
-    } else {
-      if (score < 0) {
-        bgColor = Colors.red.shade200;
-      } else if (score > 0) {
-        bgColor = Colors.cyan.shade200;
-      } else {
-        bgColor = Colors.grey.shade100;
-      }
+    Color textColor = Colors.black87;
+    if (score < 0) {
+      textColor = Colors.red;
+    } else if (score > 0) {
+      textColor = Colors.blue;
     }
 
     return Container(
-      color: bgColor,
+      color: Colors.transparent,
       padding: const EdgeInsets.symmetric(vertical: 8),
       alignment: Alignment.center,
       child: Text(
@@ -1598,7 +1596,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
         style: TextStyle(
           fontWeight: isBold ? FontWeight.bold : FontWeight.bold,
           fontSize: 12,
-          color: Colors.black87,
+          color: textColor,
         ),
       ),
     );

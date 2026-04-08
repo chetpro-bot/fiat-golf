@@ -234,19 +234,17 @@ class ScorecardScreen extends StatelessWidget {
   }
 
   Widget _buildScoreCell(int score, {bool isBold = false}) {
-    Color bgColor = Colors.transparent;
     String text = score == 0 ? '0' : (score > 0 ? '+$score' : '$score');
     
+    Color textColor = Colors.black87;
     if (score < 0) {
-      bgColor = Colors.red.shade200;
+      textColor = Colors.red;
     } else if (score > 0) {
-      bgColor = Colors.cyan.shade200;
-    } else {
-      bgColor = Colors.grey.shade100;
+      textColor = Colors.blue;
     }
 
     return Container(
-      color: bgColor,
+      color: Colors.transparent,
       padding: const EdgeInsets.symmetric(vertical: 10),
       alignment: Alignment.center,
       child: Text(
@@ -254,7 +252,7 @@ class ScorecardScreen extends StatelessWidget {
         style: TextStyle(
           fontWeight: FontWeight.bold,
           fontSize: 13,
-          color: Colors.black87,
+          color: textColor,
         ),
       ),
     );
