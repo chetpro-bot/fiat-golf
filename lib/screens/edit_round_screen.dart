@@ -228,6 +228,11 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
         teeHazard: h.teeHazard,
         secondOb: h.secondOb,
         secondHazard: h.secondHazard,
+        companionScores: h.companionScores.map((s) => s == -99 ? 0 : s).toList(),
+        companionPutts: h.companionPutts.map((p) => p == -99 ? 2 : p).toList(),
+        companionPenalties: List.from(h.companionPenalties),
+        nearestPlayerIndex: h.nearestPlayerIndex,
+        nearestErasePlayerIndex: h.nearestErasePlayerIndex,
       )).toList();
 
       final roundData = RoundData(
@@ -1300,39 +1305,8 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
                 ),
               ],
             ),
-            // 모든 홀(18홀)이 입력되었을 때만 보너스 점수판 노출 ("짠~")
-            if (holes.every((h) => h.score != -99 && h.putt != -99)) ...[
-              const Divider(height: 32),
-              const Text('✨ Q-Point Bonus Status', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.indigo)),
-              const SizedBox(height: 12),
-              _buildBonusRowStatic('Sub-80 Round (+2)', (_totalPar + (_totalGross - _totalPar)) <= 79),
-              _buildBonusRowStatic('Scrambling 50%+ (+2)', scramblingChances > 0 && (scramblingSuccesses / scramblingChances) >= 0.5),
-              _buildBonusRowStatic('One Ball Play (+2)', totalPenaltyStrokes == 0),
-              _buildBonusRowStatic('Digital Round (+2)', holes.every((h) => h.score <= 1)),
-              _buildBonusRowStatic('No Three Putt (+2)', holes.every((h) => h.putt < 3)),
-            ],
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildBonusRowStatic(String title, bool achieved) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(title, style: const TextStyle(fontSize: 14, color: Colors.black87)),
-          Text(
-            achieved ? 'SUCCESS' : 'FAIL', 
-            style: TextStyle(
-              color: achieved ? Colors.blue : Colors.red, 
-              fontWeight: FontWeight.bold,
-              fontSize: 14
-            )
-          ),
-        ],
       ),
     );
   }
