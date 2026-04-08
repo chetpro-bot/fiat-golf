@@ -64,6 +64,11 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
           teeHazard: h.teeHazard,
           secondOb: h.secondOb,
           secondHazard: h.secondHazard,
+          companionScores: List<int>.from(h.companionScores),
+          companionPutts: List<int>.from(h.companionPutts),
+          companionPenalties: List<int>.from(h.companionPenalties),
+          nearestPlayerIndex: h.nearestPlayerIndex,
+          nearestErasePlayerIndex: h.nearestErasePlayerIndex,
         )
       ).toList();
     } else {
