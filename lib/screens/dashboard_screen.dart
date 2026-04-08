@@ -203,10 +203,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       children: [
                         Text(
                           '$grossScore($overUnderStr), $totalPutt putt',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 14,
-                            color: Colors.black87,
+                            color: overUnder < 0 ? Colors.red : (overUnder == 0 ? Colors.black87 : Colors.blue),
                           ),
                         ),
                         const SizedBox(height: 4),
@@ -334,13 +334,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   
                   String scoreStr = '';
                   Color scoreColor = Colors.black87;
-                  if (h.score <= -2) { scoreStr = 'Eagle'; scoreColor = Colors.red; }
-                  else if (h.score == -1) { scoreStr = 'Birdie'; scoreColor = Colors.red; }
-                  else if (h.score == 0) { scoreStr = 'Par'; }
-                  else if (h.score == 1) { scoreStr = 'Bogey'; }
-                  else if (h.score == 2) { scoreStr = 'Double'; }
-                  else if (h.score == 3) { scoreStr = 'Triple'; }
-                  else { scoreStr = '+${h.score}'; }
+                   if (h.score <= -2) { scoreStr = 'Eagle'; scoreColor = Colors.red; }
+                  else if (h.score == -1) { scoreStr = 'Birdie'; scoreColor = Colors.red.shade400; }
+                  else if (h.score == 0) { scoreStr = 'Par'; scoreColor = Colors.black87; }
+                  else if (h.score == 1) { scoreStr = 'Bogey'; scoreColor = Colors.blue.shade300; }
+                  else if (h.score == 2) { scoreStr = 'Double'; scoreColor = Colors.blue; }
+                  else if (h.score == 3) { scoreStr = 'Triple'; scoreColor = Colors.blue.shade900; }
+                  else { scoreStr = '+${h.score}'; scoreColor = Colors.blue.shade900; }
 
                   return Padding(
                     padding: const EdgeInsets.symmetric(vertical: 2),

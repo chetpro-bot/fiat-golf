@@ -90,7 +90,11 @@ class ScorecardScreen extends StatelessWidget {
               ),
               Text(
                 '$totalGross($overUnderStr)',
-                style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.blue),
+                style: TextStyle(
+                  fontSize: 26, 
+                  fontWeight: FontWeight.bold, 
+                  color: overUnder < 0 ? Colors.red : (overUnder == 0 ? Colors.black87 : Colors.blue)
+                ),
               ),
             ],
           ),
@@ -104,7 +108,7 @@ class ScorecardScreen extends StatelessWidget {
           _buildScorecardGrid(round.holes, 0, context, playerIndex),
           const SizedBox(height: 32),
           _buildScorecardGrid(round.holes, 9, context, playerIndex),
-          
+          _buildScoreLegend(),
           const SizedBox(height: 24),
           Card(
             elevation: 1,
@@ -239,11 +243,18 @@ class ScorecardScreen extends StatelessWidget {
     Color textColor = Colors.black87;
     Color bgColor = Colors.transparent;
     
-    if (score < 0) {
-      textColor = Colors.red;
-    } else if (score > 0) {
+    if (score <= -2) {
+      bgColor = Colors.red;
+      textColor = Colors.white;
+    } else if (score == -1) {
+      bgColor = Colors.red.shade200;
       textColor = Colors.black87;
+    } else if (score == 1) {
       bgColor = Colors.cyan.shade200;
+      textColor = Colors.black87;
+    } else if (score >= 2) {
+      bgColor = Colors.blue;
+      textColor = Colors.white;
     }
 
     return Container(
@@ -260,4 +271,42 @@ class ScorecardScreen extends StatelessWidget {
       ),
     );
   }
+
+  Widget _buildScoreLegend() {
+    return Padding(
+      padding: const EdgeInsets.only(top: 16.0, bottom: 8.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          _buildLegendItem('이글', Colors.red),
+          _buildLegendItem('버디', Colors.red.shade200),
+          _buildLegendItem('파', Colors.transparent, hasBorder: true),
+          _buildLegendItem('보기', Colors.cyan.shade200),
+          _buildLegendItem('더블보기 이상', Colors.blue),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLegendItem(String label, Color color, {bool hasBorder = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4.0),
+      child: Row(
+        children: [
+          Container(
+            width: 12,
+            height: 12,
+            decoration: BoxDecoration(
+              color: color, 
+              shape: BoxShape.circle,
+              border: hasBorder ? Border.all(color: Colors.grey.shade400) : null,
+            ),
+          ),
+          const SizedBox(width: 4),
+          Text(label, style: const TextStyle(fontSize: 11, color: Colors.black87)),
+        ],
+      ),
+    );
+  }
 }
+

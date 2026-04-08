@@ -109,6 +109,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     int par5Strokes = 0, par5Holes = 0;
 
     Map<String, int> scoreDist = {
+      'Eagle+': 0,
       'Birdie': 0,
       'Par': 0,
       'Bogey': 0,
@@ -153,7 +154,8 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
           par5Strokes += actualStrokes;
         }
 
-        if (hole.score < 0) scoreDist['Birdie'] = scoreDist['Birdie']! + 1;
+        if (hole.score <= -2) scoreDist['Eagle+'] = scoreDist['Eagle+']! + 1;
+        else if (hole.score == -1) scoreDist['Birdie'] = scoreDist['Birdie']! + 1;
         else if (hole.score == 0) scoreDist['Par'] = scoreDist['Par']! + 1;
         else if (hole.score == 1) scoreDist['Bogey'] = scoreDist['Bogey']! + 1;
         else if (hole.score == 2) scoreDist['Double'] = scoreDist['Double']! + 1;
@@ -405,11 +407,12 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
           children: [
             const Text('스코어 분포도 (라운드당 평균)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
-            _buildDistBar('Birdie', dist['Birdie']!, total, rounds, const Color(0xFFD4AF37)),
-            _buildDistBar('Par', dist['Par']!, total, rounds, const Color(0xFF3B6661)),
-            _buildDistBar('Bogey', dist['Bogey']!, total, rounds, const Color(0xFF8BA3A0)),
-            _buildDistBar('Double', dist['Double']!, total, rounds, Colors.deepOrangeAccent),
-            _buildDistBar('Triple+', dist['Triple+']!, total, rounds, Colors.redAccent),
+            _buildDistBar('Eagle+', dist['Eagle+']!, total, rounds, Colors.red),
+            _buildDistBar('Birdie', dist['Birdie']!, total, rounds, Colors.red.shade200),
+            _buildDistBar('Par', dist['Par']!, total, rounds, Colors.grey.shade400),
+            _buildDistBar('Bogey', dist['Bogey']!, total, rounds, Colors.cyan.shade200),
+            _buildDistBar('Double', dist['Double']!, total, rounds, Colors.blue.shade400),
+            _buildDistBar('Triple+', dist['Triple+']!, total, rounds, Colors.blue.shade900),
           ],
         ),
       ),
