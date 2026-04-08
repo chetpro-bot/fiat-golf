@@ -282,8 +282,25 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
         print('courseUpdates: $courseUpdates');
         
         if (courseUpdates.isNotEmpty) {
-          final courseDoc = FirebaseFirestore.instance.collection('courses').doc(golfCourse);
-          final snap = await courseDoc.get().timeout(const Duration(seconds: 10), onTimeout: () => throw Exception('코스 조회 시간 초과 (10초)'));
+          // 이름으로 기존 골프장 문서 찾기 (ID가 이름과 다를 수 있음)
+          final courseSnap = await FirebaseFirestore.instance
+              .collection('courses')
+              .where('name', isEqualTo: golfCourse)
+              .limit(1)
+              .get();
+
+          DocumentReference courseDoc;
+          DocumentSnapshot? existingDoc;
+
+          if (courseSnap.docs.isNotEmpty) {
+            courseDoc = courseSnap.docs.first.reference;
+            existingDoc = courseSnap.docs.first;
+          } else {
+            // 없으면 이름 그대로 ID로 사용
+            courseDoc = FirebaseFirestore.instance.collection('courses').doc(golfCourse);
+          }
+          
+          final snap = existingDoc ?? await courseDoc.get().timeout(const Duration(seconds: 10), onTimeout: () => throw Exception('코스 조회 시간 초과 (10초)'));
           
           // 베스트 스코어 계산 (나 + 동반자들 중 최저타)
           int currentRoundBestGross = 999;
@@ -305,8 +322,9 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
           }
 
           if (snap.exists) {
-            final data = snap.data();
-            int? existingBest = data?['bestScore'] as int?;
+            final data = snap.data() as Map<String, dynamic>?;
+            // 타입 안정성을 위해 int.tryParse 사용
+            int? existingBest = data?['bestScore'] != null ? int.tryParse(data!['bestScore'].toString()) : null;
             
             // 기존 베스트보다 낮거나(더 잘침), 기존 베스트가 없으면 업데이트
             bool shouldUpdateBest = existingBest == null || currentRoundBestGross <= existingBest;
@@ -323,6 +341,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
             
             final Map<String, dynamic> finalUpdates = {
               'courses': mergedCourses,
+              'name': golfCourse, // 이름 필드도 확실히 유지
             };
             
             if (shouldUpdateBest) {
@@ -408,7 +427,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.round != null ? '기록 수정 (v1.0.8)' : '기록 추가 (v1.0.8)'),
+        title: Text(widget.round != null ? '기록 수정 (v1.0.9)' : '기록 추가 (v1.0.9)'),
         actions: widget.round != null ? [
           IconButton(
             icon: const Icon(Icons.delete, color: Colors.redAccent),

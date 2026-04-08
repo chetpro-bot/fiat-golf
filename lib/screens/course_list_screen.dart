@@ -43,7 +43,8 @@ class CourseListScreen extends StatelessWidget {
               final sortedKeys = coursesMap.keys.toList()..sort();
               final courseNames = sortedKeys.join(', ');
 
-              final bestScore = data['bestScore'] as int?;
+              final bestScoreData = data['bestScore'];
+              final int? bestScore = bestScoreData != null ? int.tryParse(bestScoreData.toString()) : null;
               final bestScorer = data['bestScorer'] as String?;
 
               return Card(
