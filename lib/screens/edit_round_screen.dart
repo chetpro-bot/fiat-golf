@@ -1369,13 +1369,19 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
 
     final subHoles = holes.sublist(startIndex, startIndex + 9);
     final totalPar = subHoles.fold(0, (total, h) => total + h.par);
-    final totalScore = subHoles.fold(0, (total, h) => total + h.score);
-    final totalPutt = subHoles.fold(0, (total, h) => total + h.putt);
+    final totalScore = subHoles.fold(0, (total, h) => total + (h.score == -99 ? 0 : h.score));
+    final totalPutt = subHoles.fold(0, (total, h) => total + (h.putt == -99 ? 0 : h.putt));
+    
+    final compNames = _companionsCtrl.text
+        .split(',')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
 
     return Table(
       border: TableBorder.all(color: Colors.grey.shade300, width: 1),
       columnWidths: const {
-        0: FlexColumnWidth(1.6),
+        0: FlexColumnWidth(1.8),
         10: FlexColumnWidth(1.6),
       },
       defaultColumnWidth: const FlexColumnWidth(1.0),
@@ -1397,18 +1403,46 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
         ),
         TableRow(
           children: [
-            _buildGridCell('SCORE', isHeader: true),
-            for (var h in subHoles) _buildGridScoreCell(h.score),
+            _buildGridCell('나(스코어)', isHeader: true),
+            for (var h in subHoles) _buildGridScoreCell(h.score == -99 ? 0 : h.score),
             _buildGridScoreCell(totalScore, isBold: true, isTotal: true),
           ],
         ),
         TableRow(
           children: [
-            _buildGridCell('PUTT', isHeader: true),
-            for (var h in subHoles) _buildGridCell('${h.putt}'),
+            _buildGridCell('나(퍼트)', isHeader: true),
+            for (var h in subHoles) _buildGridCell('${h.putt == -99 ? 0 : h.putt}'),
             _buildGridCell('$totalPutt', isBold: true),
           ],
         ),
+        if (_ojangConfig.enabled)
+          for (int c = 0; c < compNames.length; c++) ...[
+            TableRow(
+              children: [
+                _buildGridCell('${compNames[c]}(스코어)', isHeader: true),
+                for (var h in subHoles) _buildGridScoreCell(
+                  (h.companionScores.length > c && h.companionScores[c] != -99) ? h.companionScores[c] : 0
+                ),
+                _buildGridScoreCell(
+                  subHoles.fold(0, (sum, h) => sum + ((h.companionScores.length > c && h.companionScores[c] != -99) ? h.companionScores[c] : 0)),
+                  isBold: true,
+                  isTotal: true
+                ),
+              ],
+            ),
+            TableRow(
+              children: [
+                _buildGridCell('${compNames[c]}(퍼트)', isHeader: true),
+                for (var h in subHoles) _buildGridCell(
+                  '${(h.companionPutts.length > c && h.companionPutts[c] != -99) ? h.companionPutts[c] : 0}'
+                ),
+                _buildGridCell(
+                  '${subHoles.fold(0, (sum, h) => sum + ((h.companionPutts.length > c && h.companionPutts[c] != -99) ? h.companionPutts[c] : 0))}',
+                  isBold: true
+                ),
+              ],
+            ),
+          ],
       ],
     );
   }
