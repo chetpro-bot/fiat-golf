@@ -33,6 +33,7 @@ class CourseListScreen extends StatelessWidget {
 
           return ListView.builder(
             itemCount: docs.length,
+            padding: const EdgeInsets.symmetric(vertical: 12),
             itemBuilder: (context, index) {
               final doc = docs[index];
               final data = doc.data() as Map<String, dynamic>;
@@ -42,21 +43,15 @@ class CourseListScreen extends StatelessWidget {
               final sortedKeys = coursesMap.keys.toList()..sort();
               final courseNames = sortedKeys.join(', ');
 
-              String bestScoreDisplay = '';
-              if (data['bestScore'] != null) {
-                bestScoreDisplay = '\n🏆 베스트: ${data['bestScore']}타 (${data['bestScorer'] ?? '미입력'})';
-              }
+              final bestScore = data['bestScore'] as int?;
+              final bestScorer = data['bestScorer'] as String?;
 
               return Card(
                 margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: ListTile(
-                  title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text(
-                    courseNames.isNotEmpty
-                        ? '등록된 코스: $courseNames$bestScoreDisplay'
-                        : '등록된 세부 코스 없음$bestScoreDisplay',
-                  ),
-                  trailing: const Icon(Icons.edit, size: 20, color: Colors.blue),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                elevation: 2,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(16),
                   onTap: () {
                     Navigator.push(
                       context,
@@ -65,12 +60,48 @@ class CourseListScreen extends StatelessWidget {
                           docId: doc.id,
                           initialName: name,
                           initialCourses: coursesMap,
-                          initialBestScore: data['bestScore'] as int?,
-                          initialBestScorer: data['bestScorer'] as String?,
+                          initialBestScore: bestScore,
+                          initialBestScorer: bestScorer,
                         ),
                       ),
                     );
                   },
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                            const Icon(Icons.edit, size: 20, color: Colors.blue),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          courseNames.isNotEmpty ? '등록된 코스: $courseNames' : '등록된 세부 코스 없음',
+                          style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+                        ),
+                        if (bestScore != null) ...[
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              const Text('🏆 ', style: TextStyle(fontSize: 14)),
+                              Text(
+                                '베스트: ${bestScore}타 (${bestScorer ?? '미입력'})',
+                                style: const TextStyle(
+                                  color: Colors.black87,
+                                  fontWeight: FontWeight.w500,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
                 ),
               );
             },

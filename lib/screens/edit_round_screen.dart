@@ -285,23 +285,60 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
           final courseDoc = FirebaseFirestore.instance.collection('courses').doc(golfCourse);
           final snap = await courseDoc.get().timeout(const Duration(seconds: 10), onTimeout: () => throw Exception('코스 조회 시간 초과 (10초)'));
           
+          // 베스트 스코어 계산 (나 + 동반자들 중 최저타)
+          int currentRoundBestGross = 999;
+          String currentRoundBestScorer = '';
+
+          // 나의 스코어
+          int myGross = _holes.fold(0, (sum, h) => sum + h.par) + savingHoles.fold(0, (sum, h) => sum + h.score);
+          currentRoundBestGross = myGross;
+          currentRoundBestScorer = roundData.userName ?? '나';
+
+          // 동반자들 스코어
+          for (int i = 0; i < companionsList.length; i++) {
+            int compScore = savingHoles.fold(0, (sum, h) => sum + (h.companionScores.length > i ? h.companionScores[i] : 0));
+            int compGross = _holes.fold(0, (sum, h) => sum + h.par) + compScore;
+            if (compGross < currentRoundBestGross) {
+              currentRoundBestGross = compGross;
+              currentRoundBestScorer = companionsList[i];
+            }
+          }
+
           if (snap.exists) {
-            // 안전하게 Map 캐스팅 (만약 DB에 이상한 타입으로 들어있으면 빈 Map으로 초기화)
+            final data = snap.data();
+            int? existingBest = data?['bestScore'] as int?;
+            
+            // 기존 베스트보다 낮거나(더 잘침), 기존 베스트가 없으면 업데이트
+            bool shouldUpdateBest = existingBest == null || currentRoundBestGross <= existingBest;
+
             Map<String, dynamic> mergedCourses = {};
             try {
-              if (snap.data()?['courses'] is Map) {
-                mergedCourses = Map<String, dynamic>.from(snap.data()?['courses'] as Map);
+              if (data?['courses'] is Map) {
+                mergedCourses = Map<String, dynamic>.from(data?['courses'] as Map);
               }
             } catch (_) {}
             
             mergedCourses[frontCourse] = frontPars;
             mergedCourses[backCourse] = backPars;
-            await courseDoc.update({'courses': mergedCourses}).timeout(const Duration(seconds: 10), onTimeout: () => throw Exception('코스 업데이트 시간 초과 (10초)'));
+            
+            final Map<String, dynamic> finalUpdates = {
+              'courses': mergedCourses,
+            };
+            
+            if (shouldUpdateBest) {
+              finalUpdates['bestScore'] = currentRoundBestGross;
+              finalUpdates['bestScorer'] = currentRoundBestScorer;
+            }
+
+            await courseDoc.update(finalUpdates).timeout(const Duration(seconds: 10), onTimeout: () => throw Exception('코스 업데이트 시간 초과 (10초)'));
           } else {
             // 없는 골프장이라면 새로 생성
             await courseDoc.set({
               'name': golfCourse,
               'courses': courseUpdates,
+              'bestScore': currentRoundBestGross,
+              'bestScorer': currentRoundBestScorer,
+              'userId': AuthService().currentUser?.uid,
             }).timeout(const Duration(seconds: 10), onTimeout: () => throw Exception('코스 생성 시간 초과 (10초)'));
           }
         }
@@ -371,7 +408,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.round != null ? '기록 수정 (v1.0.7)' : '기록 추가 (v1.0.7)'),
+        title: Text(widget.round != null ? '기록 수정 (v1.0.8)' : '기록 추가 (v1.0.8)'),
         actions: widget.round != null ? [
           IconButton(
             icon: const Icon(Icons.delete, color: Colors.redAccent),
