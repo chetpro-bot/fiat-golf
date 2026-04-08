@@ -237,14 +237,17 @@ class ScorecardScreen extends StatelessWidget {
     String text = score == 0 ? '0' : (score > 0 ? '+$score' : '$score');
     
     Color textColor = Colors.black87;
+    Color bgColor = Colors.transparent;
+    
     if (score < 0) {
       textColor = Colors.red;
     } else if (score > 0) {
-      textColor = Colors.blue;
+      textColor = Colors.black87;
+      bgColor = Colors.cyan.shade200;
     }
 
     return Container(
-      color: Colors.transparent,
+      color: bgColor,
       padding: const EdgeInsets.symmetric(vertical: 10),
       alignment: Alignment.center,
       child: Text(

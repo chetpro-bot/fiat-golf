@@ -1220,8 +1220,15 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
             builder: (context, value, child) {
               final text = value.text.trim();
               return Padding(
-                padding: const EdgeInsets.only(left: 8.0, bottom: 8.0),
-                child: Text(text.isNotEmpty ? '$text 코스' : '전반 코스', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                padding: const EdgeInsets.only(left: 8.0, bottom: 8.0, right: 12.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(text.isNotEmpty ? '$text 코스' : '전반 코스', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    if (_selectedScorecardPlayerIndex > 0)
+                      _buildPlayerTotalScoreSummary(_selectedScorecardPlayerIndex),
+                  ],
+                ),
               );
             },
           ),
@@ -1549,6 +1556,33 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
       ],
     );
   }
+
+  Widget _buildPlayerTotalScoreSummary(int playerIndex) {
+    if (playerIndex == 0) return const SizedBox();
+    
+    int tScore = 0;
+    int tPutt = 0;
+    
+    for (var h in _holes) {
+      if (playerIndex == 1) {
+        tScore += (h.score == -99 ? 0 : h.score);
+        tPutt += (h.putt == -99 ? 0 : h.putt);
+      } else {
+        int compIdx = playerIndex - 2;
+        tScore += (h.companionScores.length > compIdx && h.companionScores[compIdx] != -99 ? h.companionScores[compIdx] : 0);
+        tPutt += (h.companionPutts.length > compIdx && h.companionPutts[compIdx] != -99 ? h.companionPutts[compIdx] : 0);
+      }
+    }
+    
+    int gross = _totalPar + tScore;
+    String overUnderStr = tScore == 0 ? 'E' : (tScore > 0 ? '+$tScore' : '$tScore');
+    Color tColor = tScore < 0 ? Colors.red : (tScore == 0 ? Colors.black87 : Colors.blue);
+    
+    return Text(
+      '$gross($overUnderStr), $tPutt putt', 
+      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: tColor),
+    );
+  }
   
   int _getPlayerScore(HoleData h, int playerIndex) {
     if (playerIndex == 1) return h.score == -99 ? 0 : h.score;
@@ -1581,14 +1615,21 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
     String text = score == 0 ? '0' : (score > 0 ? '+$score' : '$score');
     
     Color textColor = Colors.black87;
-    if (score < 0) {
-      textColor = Colors.red;
-    } else if (score > 0) {
-      textColor = Colors.blue;
+    Color bgColor = Colors.transparent;
+    
+    if (isTotal) {
+      bgColor = Colors.transparent;
+    } else {
+      if (score < 0) {
+        textColor = Colors.red;
+      } else if (score > 0) {
+        bgColor = Colors.cyan.shade200;
+        textColor = Colors.black87;
+      }
     }
 
     return Container(
-      color: Colors.transparent,
+      color: bgColor,
       padding: const EdgeInsets.symmetric(vertical: 8),
       alignment: Alignment.center,
       child: Text(
