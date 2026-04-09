@@ -830,7 +830,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
               const Divider(height: 8),
               // 사용자 본인
               _buildPlayerScoreRow(
-                name: '나', 
+                name: AuthService().currentUser?.displayName ?? '나', 
                 score: hole.score, 
                 putt: hole.putt, 
                 penalty: hole.penaltyStrokes,
@@ -1008,7 +1008,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
   }
 
   Widget _buildBettingEvents(HoleData hole, List<String> compNames) {
-    List<String> allPlayers = ['나', ...compNames];
+    List<String> allPlayers = [AuthService().currentUser?.displayName ?? '나', ...compNames];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1247,7 +1247,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
         .map((e) => e.trim())
         .where((e) => e.isNotEmpty)
         .toList();
-    List<String> players = ['전체', '나'];
+    List<String> players = ['전체', AuthService().currentUser?.displayName ?? '나'];
     if (_ojangConfig.enabled) players.addAll(compNames);
     
     // Ensure index is within bounds
@@ -1530,7 +1530,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
           .map((e) => e.trim())
           .where((e) => e.isNotEmpty)
           .toList();
-      final allNames = ['나'];
+      final allNames = [AuthService().currentUser?.displayName ?? '나'];
       if (_ojangConfig.enabled) allNames.addAll(compNames);
       
       final rows = <TableRow>[];
@@ -1815,7 +1815,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
     );
     
     final totals = BettingService.calculateTotal(tempRound);
-    final List<String> allNames = ['나', ...compNames];
+    final List<String> allNames = [AuthService().currentUser?.displayName ?? '나', ...compNames];
     
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
