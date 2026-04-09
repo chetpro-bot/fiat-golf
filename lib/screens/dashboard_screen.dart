@@ -125,10 +125,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 docs[index].data() as Map<String, dynamic>,
               );
 
-              int totalPar = round.holes.fold(0, (total, h) => total + h.par);
-              int totalPutt = round.holes.fold(0, (total, h) => total + h.putt);
-              int overUnder = round.totalScore; // totalScore는 이제 오버/언더 누적값을 저장함
+              final enteredHoles = round.holes.where((h) => h.score != -99).toList();
+              int totalPar = enteredHoles.fold(0, (total, h) => total + h.par);
+              int totalPutt = enteredHoles.fold(0, (total, h) => total + h.putt);
+              int overUnder = round.totalScore; 
               int grossScore = totalPar + overUnder; 
+              bool isIncomplete = enteredHoles.length < 18;
+
               String overUnderStr;
               if (overUnder > 0) {
                 overUnderStr = '+$overUnder';
@@ -178,9 +181,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          '${DateFormat('yyyy-MM-dd').format(round.date)}  ${round.teeUpTime}',
-                          style: const TextStyle(fontSize: 13, color: Color(0xFF667C7A)),
+                        Row(
+                          children: [
+                            Text(
+                              '${DateFormat('yyyy-MM-dd').format(round.date)}  ${round.teeUpTime}',
+                              style: const TextStyle(fontSize: 13, color: Color(0xFF667C7A)),
+                            ),
+                            if (isIncomplete) ...[
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange.shade50,
+                                  borderRadius: BorderRadius.circular(4),
+                                  border: Border.all(color: Colors.orange.shade200),
+                                ),
+                                child: Text(
+                                  '${enteredHoles.length}홀 기록됨',
+                                  style: TextStyle(fontSize: 11, color: Colors.orange.shade700, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                         if (round.companions.isNotEmpty)
                           Text(
@@ -195,7 +217,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   trailing: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF27AE60).withOpacity(0.05),
+                      color: isIncomplete ? Colors.grey.shade50 : const Color(0xFF27AE60).withOpacity(0.05),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Column(
@@ -206,7 +228,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 14,
-                            color: overUnder < 0 ? Colors.red : (overUnder == 0 ? Colors.black87 : Colors.blue),
+                            color: isIncomplete ? Colors.grey : (overUnder < 0 ? Colors.red : (overUnder == 0 ? Colors.black87 : Colors.blue)),
                           ),
                         ),
                         const SizedBox(height: 4),
@@ -215,15 +237,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFD4AF37).withOpacity(0.2),
+                              color: isIncomplete ? Colors.grey.shade200 : const Color(0xFFD4AF37).withOpacity(0.2),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
                               'Q-Point: ${round.qPoint}',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 12,
-                                color: Color(0xFF997D21),
+                                color: isIncomplete ? Colors.grey : const Color(0xFF997D21),
                               ),
                             ),
                           ),
@@ -334,9 +356,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   
                   String scoreStr = '';
                   Color scoreColor = Colors.black87;
-                   if (h.score <= -2) { scoreStr = 'Eagle'; scoreColor = Colors.red; }
+                  if (h.score <= -2) { scoreStr = 'Eagle'; scoreColor = Colors.red; }
                   else if (h.score == -1) { scoreStr = 'Birdie'; scoreColor = Colors.red.shade400; }
                   else if (h.score == 0) { scoreStr = 'Par'; scoreColor = Colors.black87; }
+                  else if (h.score >= h.par) { scoreStr = 'Double Par'; scoreColor = Colors.blue.shade900; }
                   else if (h.score == 1) { scoreStr = 'Bogey'; scoreColor = Colors.blue.shade300; }
                   else if (h.score == 2) { scoreStr = 'Double'; scoreColor = Colors.blue; }
                   else if (h.score == 3) { scoreStr = 'Triple'; scoreColor = Colors.blue.shade900; }
@@ -358,7 +381,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             ),
                           ),
                         ),
-                        Text('$pts', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.indigo)),
+                        Text('$pts', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: pts == 5 ? Colors.red : Colors.indigo)),
                       ],
                     ),
                   );

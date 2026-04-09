@@ -14,13 +14,16 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   String _selectedFilter = '누적';
 
   List<RoundData> _applyFilter(List<RoundData> rounds) {
+    // 18홀이 모두 입력된 라운드만 통계에 포함 (사용자 요청 사항 반영)
+    List<RoundData> completeRounds = rounds.where((r) => r.holes.where((h) => h.score != -99).length == 18).toList();
+
     if (_selectedFilter == '올해') {
       int currentYear = DateTime.now().year;
-      return rounds.where((r) => r.date.year == currentYear).toList();
+      return completeRounds.where((r) => r.date.year == currentYear).toList();
     } else if (_selectedFilter == '최근 10게임') {
-      return rounds.take(10).toList();
+      return completeRounds.take(10).toList();
     }
-    return rounds;
+    return completeRounds;
   }
 
   @override

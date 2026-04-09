@@ -224,22 +224,25 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
         docId = FirebaseFirestore.instance.collection('rounds').doc().id;
       }
 
-      // 저장 전, 미입력(-99) 구역을 기본값(0, 2)으로 보정
+      // 저장 전, 미입력(-99) 구역을 그대로 유지
       final List<HoleData> savingHoles = _holes.map((h) => HoleData(
         holeNumber: h.holeNumber,
         par: h.par,
-        score: h.score == -99 ? 0 : h.score,
-        putt: h.putt == -99 ? 2 : h.putt,
+        score: h.score,
+        putt: h.putt,
         teeOb: h.teeOb,
         teeHazard: h.teeHazard,
         secondOb: h.secondOb,
         secondHazard: h.secondHazard,
-        companionScores: h.companionScores.map((s) => s == -99 ? 0 : s).toList(),
-        companionPutts: h.companionPutts.map((p) => p == -99 ? 2 : p).toList(),
+        companionScores: List<int>.from(h.companionScores),
+        companionPutts: List<int>.from(h.companionPutts),
         companionPenalties: List.from(h.companionPenalties),
         nearestPlayerIndex: h.nearestPlayerIndex,
         nearestErasePlayerIndex: h.nearestErasePlayerIndex,
       )).toList();
+
+      // 입력된 홀 수 확인
+      int enteredHolesCount = _holes.where((h) => h.score != -99).length;
 
       final roundData = RoundData(
         id: docId,
@@ -249,7 +252,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
         frontCourseName: capturedFrontCourse == '전반' && _internalFrontCourseCtrl?.text.trim().isEmpty == true ? '' : capturedFrontCourse,
         backCourseName: capturedBackCourse == '후반' && _internalBackCourseCtrl?.text.trim().isEmpty == true ? '' : capturedBackCourse,
         companions: companionsList,
-        totalScore: savingHoles.fold(0, (sum, h) => sum + h.score), // 누적 오버/언더파 값 저장
+        totalScore: savingHoles.where((h) => h.score != -99).fold(0, (sum, h) => sum + h.score), // 입력된 홀만 합산
         holes: savingHoles,
         createdAt: widget.round?.createdAt ?? DateTime.now(),
         userId: AuthService().currentUser?.uid,
@@ -302,22 +305,25 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
           
           final snap = existingDoc ?? await courseDoc.get().timeout(const Duration(seconds: 10), onTimeout: () => throw Exception('코스 조회 시간 초과 (10초)'));
           
-          // 베스트 스코어 계산 (나 + 동반자들 중 최저타)
-          int currentRoundBestGross = 999;
-          String currentRoundBestScorer = '';
+          // 베스트 스코어 계산 및 업데이트 (18홀 모두 입력된 경우에만 수행)
+          bool isCompleteRound = enteredHolesCount == 18;
+          int? currentRoundBestGross;
+          String? currentRoundBestScorer;
 
-          // 나의 스코어
-          int myGross = _holes.fold(0, (sum, h) => sum + h.par) + savingHoles.fold(0, (sum, h) => sum + h.score);
-          currentRoundBestGross = myGross;
-          currentRoundBestScorer = roundData.userName ?? '나';
+          if (isCompleteRound) {
+            // 나의 스코어
+            int myGross = _holes.fold(0, (sum, h) => sum + h.par) + savingHoles.fold(0, (sum, h) => sum + h.score);
+            currentRoundBestGross = myGross;
+            currentRoundBestScorer = roundData.userName ?? '나';
 
-          // 동반자들 스코어
-          for (int i = 0; i < companionsList.length; i++) {
-            int compScore = savingHoles.fold(0, (sum, h) => sum + (h.companionScores.length > i ? h.companionScores[i] : 0));
-            int compGross = _holes.fold(0, (sum, h) => sum + h.par) + compScore;
-            if (compGross < currentRoundBestGross) {
-              currentRoundBestGross = compGross;
-              currentRoundBestScorer = companionsList[i];
+            // 동반자들 스코어
+            for (int i = 0; i < companionsList.length; i++) {
+              int compScore = savingHoles.fold(0, (sum, h) => sum + (h.companionScores.length > i ? h.companionScores[i] : 0));
+              int compGross = _holes.fold(0, (sum, h) => sum + h.par) + compScore;
+              if (compGross < currentRoundBestGross!) {
+                currentRoundBestGross = compGross;
+                currentRoundBestScorer = companionsList[i];
+              }
             }
           }
 
@@ -326,8 +332,8 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
             // 타입 안정성을 위해 int.tryParse 사용
             int? existingBest = data?['bestScore'] != null ? int.tryParse(data!['bestScore'].toString()) : null;
             
-            // 기존 베스트보다 낮거나(더 잘침), 기존 베스트가 없으면 업데이트
-            bool shouldUpdateBest = existingBest == null || currentRoundBestGross <= existingBest;
+            // 18홀이 다 입력되었고, 기존 베스트보다 낮거나(더 잘침), 기존 베스트가 없으면 업데이트
+            bool shouldUpdateBest = isCompleteRound && (existingBest == null || currentRoundBestGross! <= existingBest);
 
             Map<String, dynamic> mergedCourses = {};
             try {
@@ -352,18 +358,33 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
             await courseDoc.update(finalUpdates).timeout(const Duration(seconds: 10), onTimeout: () => throw Exception('코스 업데이트 시간 초과 (10초)'));
           } else {
             // 없는 골프장이라면 새로 생성
-            await courseDoc.set({
+            final Map<String, dynamic> newCourseData = {
               'name': golfCourse,
               'courses': courseUpdates,
-              'bestScore': currentRoundBestGross,
-              'bestScorer': currentRoundBestScorer,
               'userId': AuthService().currentUser?.uid,
-            }).timeout(const Duration(seconds: 10), onTimeout: () => throw Exception('코스 생성 시간 초과 (10초)'));
+            };
+            
+            if (isCompleteRound) {
+              newCourseData['bestScore'] = currentRoundBestGross;
+              newCourseData['bestScorer'] = currentRoundBestScorer;
+            }
+            
+            await courseDoc.set(newCourseData).timeout(const Duration(seconds: 10), onTimeout: () => throw Exception('코스 생성 시간 초과 (10초)'));
           }
         }
       }
 
-      if (mounted) Navigator.pop(context); // 저장 완료 후 화면 닫기
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(enteredHolesCount < 18 
+              ? '$enteredHolesCount홀의 기록이 저장되었습니다. (18홀 미입력으로 통계는 제공되지 않습니다)' 
+              : '18홀 기록이 모두 저장되었습니다.'),
+            backgroundColor: enteredHolesCount < 18 ? Colors.orange : Colors.green,
+          ),
+        );
+        Navigator.pop(context); // 저장 완료 후 화면 닫기
+      }
       
     } catch (e, stack) {
       if (mounted) {
@@ -427,7 +448,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.round != null ? '기록 수정 (v1.0.9)' : '기록 추가 (v1.0.9)'),
+        title: Text(widget.round != null ? '기록 수정 (v1.1.0)' : '기록 추가 (v1.1.0)'),
         actions: widget.round != null ? [
           IconButton(
             icon: const Icon(Icons.delete, color: Colors.redAccent),
@@ -765,7 +786,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
                 ),
                 Expanded(
                   child: Text(
-                    _getScoreLabel(hole.score),
+                    _getScoreLabel(hole.score, hole.par),
                     style: TextStyle(
                       fontWeight: FontWeight.bold, 
                       color: _getScoreColor(hole.score)
@@ -1541,8 +1562,8 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
           TableRow(
             children: [
               _buildGridCell(allNames[i], isHeader: true),
-              for (var h in subHoles) _buildGridScoreCell(_getPlayerScore(h, i + 1)),
-              _buildGridScoreCell(tempTotal, isBold: true, isTotal: true),
+              for (var h in subHoles) _buildGridScoreCell(h, i + 1),
+              _buildGridScoreCell(null, i + 1, customScore: tempTotal, isBold: true, isTotal: true),
             ],
           )
         );
@@ -1668,7 +1689,8 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
     );
   }
 
-  Widget _buildGridScoreCell(int score, {bool isBold = false, bool isTotal = false}) {
+  Widget _buildGridScoreCell(HoleData? h, int playerIndex, {int? customScore, bool isBold = false, bool isTotal = false}) {
+    int score = customScore ?? (h != null ? _getPlayerScore(h, playerIndex) : 0);
     String text = score == 0 ? '0' : (score > 0 ? '+$score' : '$score');
     
     Color textColor = Colors.black87;
@@ -1692,17 +1714,42 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
       }
     }
 
+    // 니어리스트 표시 (파3에서만)
+    Widget? nearestMarker;
+    if (h != null && h.par == 3 && h.nearestPlayerIndex == (playerIndex - 1)) {
+      if (score <= 0) {
+        nearestMarker = const Positioned(
+          top: 0,
+          right: 1,
+          child: Text('★', style: TextStyle(color: Color(0xFFD4AF37), fontSize: 9, fontWeight: FontWeight.bold)),
+        );
+      } else {
+        nearestMarker = const Positioned(
+          top: 0,
+          right: 1,
+          child: Text('x', style: TextStyle(color: Colors.white70, fontSize: 9, fontWeight: FontWeight.bold)),
+        );
+      }
+    }
+
     return Container(
       color: bgColor,
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      alignment: Alignment.center,
-      child: Text(
-        text,
-        style: TextStyle(
-          fontWeight: isBold ? FontWeight.bold : FontWeight.bold,
-          fontSize: 12,
-          color: textColor,
-        ),
+      child: Stack(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            alignment: Alignment.center,
+            child: Text(
+              text,
+              style: TextStyle(
+                fontWeight: isBold ? FontWeight.bold : FontWeight.bold,
+                fontSize: 12,
+                color: textColor,
+              ),
+            ),
+          ),
+          if (nearestMarker != null) nearestMarker,
+        ],
       ),
     );
   }
@@ -1860,12 +1907,13 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
       ),
     );
   }
-  String _getScoreLabel(int score) {
+  String _getScoreLabel(int score, int par) {
     if (score == -99) return '미입력';
     if (score <= -3) return 'Albatross';
     if (score == -2) return 'Eagle';
     if (score == -1) return 'Birdie';
     if (score == 0) return 'Par';
+    if (score >= par) return 'Double Par';
     if (score == 1) return 'Bogey';
     if (score == 2) return 'Double Bogey';
     if (score == 3) return 'Triple Bogey';

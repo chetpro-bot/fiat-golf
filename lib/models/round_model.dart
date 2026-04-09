@@ -119,7 +119,7 @@ class HoleData {
   }
 
   int get penaltyStrokes => (teeOb * 2) + (secondOb * 2) + teeHazard + secondHazard;
-  int get qPoint => (6 - score - putt).clamp(0, 5);
+  int get qPoint => (score == -99 || putt == -99) ? 0 : (6 - score - putt).clamp(0, 5);
 }
 
 class RoundData {
@@ -227,6 +227,7 @@ class RoundData {
     for (var hole in holes) {
       // hole.score는 오버/언더파 값 (0=Par, 1=Bogey, -1=Birdie 등)
       // 새 공식: (6 - score - putt).clamp(0, 5) -> HoleData.qPoint
+      // 미입력 홀은 0점을 반환하도록 HoleData에서 처리됨
       points += hole.qPoint;
     }
     return points;

@@ -108,32 +108,51 @@ class ScorecardScreen extends StatelessWidget {
           _buildScorecardGrid(round.holes, 0, context, playerIndex),
           const SizedBox(height: 32),
           _buildScorecardGrid(round.holes, 9, context, playerIndex),
+          const SizedBox(height: 16),
           _buildScoreLegend(),
-          const SizedBox(height: 24),
-          Card(
-            elevation: 1,
-            color: Colors.grey.shade50,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('라운드 통계', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+          const SizedBox(height: 16),
+          
+          // 18홀이 모두 입력된 경우에만 통계 제공
+          round.holes.where((h) => h.score != -99).length == 18
+            ? Card(
+                elevation: 1,
+                color: Colors.grey.shade50,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _statItem('Gross', '$totalGross'),
-                      _statItem('To Par', overUnderStr),
-                      _statItem('Putts', '$totalPutt'),
-                      _statItem('Penalties', '$totalPenalty'),
+                      const Text('라운드 통계', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
+                      const SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          _statItem('Gross', '$totalGross'),
+                          _statItem('To Par', overUnderStr),
+                          _statItem('Putts', '$totalPutt'),
+                          _statItem('Penalties', '$totalPenalty'),
+                        ],
+                      ),
                     ],
                   ),
-                ],
+                ),
+              )
+            : Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 24.0),
+                  child: Column(
+                    children: [
+                      Icon(Icons.info_outline, color: Colors.orange.shade300, size: 32),
+                      const SizedBox(height: 8),
+                      const Text(
+                        '18홀 기록이 모두 입력되어야 통계가 제공됩니다.',
+                        style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            ),
-          )
         ],
       ),
     );
@@ -195,8 +214,8 @@ class ScorecardScreen extends StatelessWidget {
         TableRow(
           children: [
             _buildCell('SCORE', isHeader: true),
-            for (var h in subHoles) _buildScoreCell(_getPlayerScore(h, playerIndex)),
-            _buildScoreCell(totalScore, isBold: true),
+            for (var h in subHoles) _buildScoreCell(h, playerIndex),
+            _buildScoreCell(null, playerIndex, customScore: totalScore, isBold: true),
           ],
         ),
         TableRow(
@@ -237,7 +256,8 @@ class ScorecardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildScoreCell(int score, {bool isBold = false}) {
+  Widget _buildScoreCell(HoleData? h, int playerIndex, {int? customScore, bool isBold = false}) {
+    int score = customScore ?? (h != null ? _getPlayerScore(h, playerIndex) : 0);
     String text = score == 0 ? '0' : (score > 0 ? '+$score' : '$score');
     
     Color textColor = Colors.black87;
@@ -257,17 +277,42 @@ class ScorecardScreen extends StatelessWidget {
       textColor = Colors.white;
     }
 
+    // 니어리스트 표시 (파3에서만)
+    Widget? nearestMarker;
+    if (h != null && h.par == 3 && h.nearestPlayerIndex == playerIndex) {
+      if (score <= 0) {
+        nearestMarker = const Positioned(
+          top: 1,
+          right: 2,
+          child: Text('★', style: TextStyle(color: Color(0xFFD4AF37), fontSize: 10, fontWeight: FontWeight.bold)),
+        );
+      } else {
+        nearestMarker = const Positioned(
+          top: 1,
+          right: 2,
+          child: Text('x', style: TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.bold)),
+        );
+      }
+    }
+
     return Container(
       color: bgColor,
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      alignment: Alignment.center,
-      child: Text(
-        text,
-        style: TextStyle(
-          fontWeight: FontWeight.bold,
-          fontSize: 13,
-          color: textColor,
-        ),
+      child: Stack(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            alignment: Alignment.center,
+            child: Text(
+              text,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+                color: textColor,
+              ),
+            ),
+          ),
+          if (nearestMarker != null) nearestMarker,
+        ],
       ),
     );
   }
