@@ -1620,8 +1620,8 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
         TableRow(
           children: [
             _buildGridCell('SCORE', isHeader: true),
-            for (var h in subHoles) _buildGridScoreCell(_getPlayerScore(h, playerIndex)),
-            _buildGridScoreCell(totalScore, isBold: true, isTotal: true),
+            for (var h in subHoles) _buildGridScoreCell(h, playerIndex),
+            _buildGridScoreCell(null, playerIndex, customScore: totalScore, isBold: true, isTotal: true),
           ],
         ),
         TableRow(
