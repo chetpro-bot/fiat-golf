@@ -290,7 +290,7 @@ class ScorecardScreen extends StatelessWidget {
         nearestMarker = const Positioned(
           top: 1,
           right: 2,
-          child: Text('x', style: TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.bold)),
+          child: Text('X', style: TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.bold)),
         );
       }
     }
@@ -328,6 +328,12 @@ class ScorecardScreen extends StatelessWidget {
           _buildLegendItem('파', Colors.transparent, hasBorder: true),
           _buildLegendItem('보기', Colors.cyan.shade200),
           _buildLegendItem('더블보기 이상', Colors.blue),
+          const SizedBox(width: 8),
+          const Text('★', style: TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.bold)),
+          const Text('성공', style: TextStyle(fontSize: 11, color: Colors.black87)),
+          const SizedBox(width: 6),
+          const Text('X', style: TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.bold)),
+          const Text('실패', style: TextStyle(fontSize: 11, color: Colors.black87)),
         ],
       ),
     );
