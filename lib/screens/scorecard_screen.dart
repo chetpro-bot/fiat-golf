@@ -72,6 +72,7 @@ class ScorecardScreen extends StatelessWidget {
 
     int totalGross = totalPar + overUnder;
     String overUnderStr = overUnder > 0 ? '+$overUnder' : (overUnder < 0 ? '$overUnder' : 'E');
+    QPointBreakdown qPointBreakdown = round.getQPointBreakdown(playerIndex);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
@@ -88,13 +89,35 @@ class ScorecardScreen extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              Text(
-                '$totalGross($overUnderStr)',
-                style: TextStyle(
-                  fontSize: 26, 
-                  fontWeight: FontWeight.bold, 
-                  color: overUnder < 0 ? Colors.red : (overUnder == 0 ? Colors.black87 : Colors.blue)
-                ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    '$totalGross($overUnderStr)',
+                    style: TextStyle(
+                      fontSize: 22, 
+                      fontWeight: FontWeight.bold, 
+                      color: overUnder < 0 ? Colors.red : (overUnder == 0 ? Colors.black87 : Colors.blue)
+                    ),
+                  ),
+                  InkWell(
+                    onTap: () => _showQPointBreakdown(context, round, playerIndex, playerName),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '$totalPutt putt, ',
+                          style: const TextStyle(fontSize: 16, color: Colors.blueGrey, fontWeight: FontWeight.w500),
+                        ),
+                        Text(
+                          'Q ${qPointBreakdown.total}pt',
+                          style: const TextStyle(fontSize: 16, color: Color(0xFFD4AF37), fontWeight: FontWeight.bold),
+                        ),
+                        const Icon(Icons.info_outline, size: 14, color: Color(0xFFD4AF37)),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -129,9 +152,9 @@ class ScorecardScreen extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.spaceAround,
                         children: [
                           _statItem('Gross', '$totalGross'),
-                          _statItem('To Par', overUnderStr),
+                          _statItem('To Par', overUnderStr, color: overUnder < 0 ? Colors.red : (overUnder == 0 ? Colors.black87 : Colors.blue)),
                           _statItem('Putts', '$totalPutt'),
-                          _statItem('Penalties', '$totalPenalty'),
+                          _statItem('Q-Point', '${qPointBreakdown.total}', color: const Color(0xFFD4AF37)),
                         ],
                       ),
                     ],
@@ -158,13 +181,127 @@ class ScorecardScreen extends StatelessWidget {
     );
   }
 
-  Widget _statItem(String title, String val) {
+  Widget _statItem(String title, String val, {Color? color}) {
     return Column(
       children: [
         Text(title, style: const TextStyle(fontSize: 13, color: Colors.grey, fontWeight: FontWeight.bold)),
         const SizedBox(height: 6),
-        Text(val, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87)),
+        Text(val, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: color ?? Colors.black87)),
       ],
+    );
+  }
+
+  void _showQPointBreakdown(BuildContext context, RoundData round, int playerIndex, String playerName) {
+    final breakdown = round.getQPointBreakdown(playerIndex);
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          backgroundColor: const Color(0xFFF1F4F1),
+          insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('${round.golfCourseName} Q-Point 상세', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+                  ],
+                ),
+                const Divider(color: Colors.grey, height: 10),
+                const SizedBox(height: 5),
+                _buildQPointBonusRow('Sub-80 Round', breakdown.under80 ? 4 : 0),
+                _buildQPointBonusRow('Scrambling 50%+', breakdown.scrambling ? 4 : 0),
+                _buildQPointBonusRow('One Ball Play', breakdown.noPenalty ? 4 : 0),
+                _buildQPointBonusRow('Digital Round', breakdown.digital ? 4 : 0),
+                _buildQPointBonusRow('No Three Putt', breakdown.noThreePutt ? 4 : 0),
+                _buildQPointBonusRow('GIR 50%+', breakdown.gir50 ? 4 : 0),
+                _buildQPointBonusRow('Putts 29 or less', breakdown.puttsUnder30 ? 4 : 0),
+                _buildQPointBonusRow('Bounce Back', breakdown.bounceBackCount * 2),
+                const Divider(color: Colors.grey, height: 10),
+                Flexible(
+                  child: GridView.builder(
+                    shrinkWrap: true,
+                    padding: EdgeInsets.zero,
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      childAspectRatio: 4.8,
+                      crossAxisSpacing: 10,
+                    ),
+                    itemCount: breakdown.holeDetails.length,
+                    itemBuilder: (context, index) {
+                      final d = breakdown.holeDetails[index];
+                      return Container(
+                        padding: const EdgeInsets.symmetric(vertical: 0.5),
+                        decoration: BoxDecoration(border: Border(bottom: BorderSide(color: Colors.grey.shade200, width: 0.5))),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                '${d.holeNumber}번홀 ${d.on}온 ${d.putt}펏, ${d.scoreLabel}',
+                                style: const TextStyle(fontSize: 10.5, color: Colors.blueGrey),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            Text(
+                              '${d.points}',
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blue),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const Divider(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('$playerName님의 총 Q-Point', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    Text('${breakdown.total}pt', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFFD4AF37))),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('닫기', style: TextStyle(color: Color(0xFF27AE60), fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildQPointBonusRow(String title, int points) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(title, style: const TextStyle(color: Colors.black87, fontSize: 14)),
+          Text(
+            '$points',
+            style: TextStyle(
+              color: points > 0 ? Colors.blue : Colors.grey,
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -330,10 +467,10 @@ class ScorecardScreen extends StatelessWidget {
           _buildLegendItem('더블보기 이상', Colors.blue),
           const SizedBox(width: 8),
           const Text('★', style: TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.bold)),
-          const Text('성공', style: TextStyle(fontSize: 11, color: Colors.black87)),
-          const SizedBox(width: 6),
+          const Text(' 니어 성공', style: TextStyle(fontSize: 11, color: Colors.black87)),
+          const SizedBox(width: 8),
           const Text('X', style: TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.bold)),
-          const Text('실패', style: TextStyle(fontSize: 11, color: Colors.black87)),
+          const Text(' 니어 실패', style: TextStyle(fontSize: 11, color: Colors.black87)),
         ],
       ),
     );

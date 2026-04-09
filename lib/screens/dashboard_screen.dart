@@ -93,7 +93,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('나의 골프 기록'),
+        title: const Text('나의 골프 기록 (v1.3.0)'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         leading: IconButton(
           icon: const Icon(Icons.logout, size: 20),
@@ -298,12 +298,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
           );
         },
       ),
+      bottomNavigationBar: Container(
+        height: 30,
+        alignment: Alignment.center,
+        child: Text(
+          'App Version v1.3.0',
+          style: TextStyle(fontSize: 10, color: Colors.grey.withOpacity(0.5)),
+        ),
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => const EditRoundScreen(), // 새 기록 추가
+              builder: (context) => const EditRoundScreen(),
             ),
           );
         },
@@ -316,119 +324,116 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   void _showQPointBreakdown(BuildContext context, RoundData round) {
-    int totalPar = round.holes.fold(0, (total, h) => total + h.par);
-    int grossScore = totalPar + round.totalScore;
-    bool sub80 = grossScore <= 79;
-    
-    int scramblingChances = 0;
-    int scramblingSuccesses = 0;
-    int totalPenalty = 0;
-    bool hasThreePutt = false;
-    bool isDigital = true;
-    
-    for (var hole in round.holes) {
-      totalPenalty += hole.penaltyStrokes;
-      if (hole.putt >= 3) hasThreePutt = true;
-      if (hole.score > 1) isDigital = false;
-      
-      bool isGir = (hole.score - hole.putt) <= -2;
-      if (!isGir) {
-        scramblingChances++;
-        if (hole.score <= 0) { scramblingSuccesses++; }
-      }
-    }
-    
-    bool scrambling50 = scramblingChances > 0 && (scramblingSuccesses / scramblingChances) >= 0.5;
-    bool oneBall = totalPenalty == 0;
-    bool digitalRound = isDigital;
-    bool noThreePutt = !hasThreePutt;
+    final breakdown = round.getQPointBreakdown(0); // 0: User
 
-    int points = 0;
-    if (sub80) { points += 2; }
-    if (scrambling50) { points += 2; }
-    if (oneBall) { points += 2; }
-    if (digitalRound) { points += 2; }
-    if (noThreePutt) { points += 2; }
-
-    Widget buildBonusRow(String title, bool achieved) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 2),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(title, style: const TextStyle(fontSize: 14)),
-            Text(achieved ? 'SUCCESS' : 'FAIL', style: TextStyle(color: achieved ? const Color(0xFF27AE60) : Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 14)),
-          ],
-        ),
-      );
-    }
-    
     showDialog(
       context: context,
-      builder: (ctx) {
-        return AlertDialog(
-          title: Text('${round.golfCourseName} Q-Point 상세내역', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: ListView(
-              shrinkWrap: true,
+      builder: (context) {
+        return Dialog(
+          backgroundColor: const Color(0xFFF1F4F1),
+          insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                buildBonusRow('Sub-80 Round (+2)', sub80),
-                buildBonusRow('Scrambling 50%+ (+2)', scrambling50),
-                buildBonusRow('One Ball Play (+2)', oneBall),
-                buildBonusRow('Digital Round (+2)', digitalRound),
-                buildBonusRow('No Three Putt (+2)', noThreePutt),
-                const Divider(),
-                ...round.holes.map((h) {
-                  int pts = h.qPoint;
-                  
-                  int actualStrokes = h.score + h.par;
-                  int onStrokes = actualStrokes - h.putt;
-                  
-                  String scoreStr = '';
-                  Color scoreColor = Colors.black87;
-                  if (h.score <= -2) { scoreStr = 'Eagle'; scoreColor = Colors.red; }
-                  else if (h.score == -1) { scoreStr = 'Birdie'; scoreColor = Colors.red.shade400; }
-                  else if (h.score == 0) { scoreStr = 'Par'; scoreColor = Colors.black87; }
-                  else if (h.score >= h.par) { scoreStr = 'Double Par'; scoreColor = Colors.blue.shade900; }
-                  else if (h.score == 1) { scoreStr = 'Bogey'; scoreColor = Colors.blue.shade300; }
-                  else if (h.score == 2) { scoreStr = 'Double'; scoreColor = Colors.blue; }
-                  else if (h.score == 3) { scoreStr = 'Triple'; scoreColor = Colors.blue.shade900; }
-                  else { scoreStr = '+${h.score}'; scoreColor = Colors.blue.shade900; }
-
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 2),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: RichText(
-                            text: TextSpan(
-                              style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14, color: Colors.black87),
-                              children: [
-                                TextSpan(text: '${h.holeNumber}번홀 (파${h.par}) $onStrokes온 ${h.putt}펏, '),
-                                TextSpan(text: scoreStr, style: TextStyle(color: scoreColor, fontWeight: FontWeight.bold)),
-                              ],
-                            ),
-                          ),
-                        ),
-                        Text('$pts', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: pts == 5 ? Colors.red : Colors.indigo)),
-                      ],
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('${round.golfCourseName} Q-Point 상세', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+                  ],
+                ),
+                const Divider(color: Colors.grey, height: 10),
+                const SizedBox(height: 5),
+                _buildBonusRow('Sub-80 Round', breakdown.under80 ? 4 : 0),
+                _buildBonusRow('Scrambling 50%+', breakdown.scrambling ? 4 : 0),
+                _buildBonusRow('One Ball Play', breakdown.noPenalty ? 4 : 0),
+                _buildBonusRow('Digital Round', breakdown.digital ? 4 : 0),
+                _buildBonusRow('No Three Putt', breakdown.noThreePutt ? 4 : 0),
+                _buildBonusRow('GIR 50%+', breakdown.gir50 ? 4 : 0),
+                _buildBonusRow('Putts 29 or less', breakdown.puttsUnder30 ? 4 : 0),
+                _buildBonusRow('Bounce Back', breakdown.bounceBackCount * 2),
+                const Divider(color: Colors.grey, height: 10),
+                Flexible(
+                  child: GridView.builder(
+                    shrinkWrap: true,
+                    padding: EdgeInsets.zero,
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      childAspectRatio: 4.8,
+                      crossAxisSpacing: 10,
                     ),
-                  );
-                }),
+                    itemCount: breakdown.holeDetails.length,
+                    itemBuilder: (context, index) {
+                      final d = breakdown.holeDetails[index];
+                      return Container(
+                        padding: const EdgeInsets.symmetric(vertical: 0.5),
+                        decoration: BoxDecoration(border: Border(bottom: BorderSide(color: Colors.grey.shade200, width: 0.5))),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                '${d.holeNumber}번홀 ${d.on}온 ${d.putt}펏, ${d.scoreLabel}',
+                                style: const TextStyle(fontSize: 10.5, color: Colors.blueGrey),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            Text(
+                              '${d.points}',
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blue),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const Divider(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('나의 총 Q-Point', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    Text('${breakdown.total}pt', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFFD4AF37))),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('닫기', style: TextStyle(color: Color(0xFF27AE60), fontWeight: FontWeight.bold)),
+                  ),
+                ),
               ],
             ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              style: TextButton.styleFrom(foregroundColor: const Color(0xFF27AE60)),
-              child: const Text('닫기')
-            )
-          ],
         );
-      }
+      },
+    );
+  }
+
+  Widget _buildBonusRow(String title, int points) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(title, style: const TextStyle(color: Colors.black87, fontSize: 14)),
+          Text(
+            '$points',
+            style: TextStyle(
+              color: points > 0 ? Colors.blue : Colors.grey,
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

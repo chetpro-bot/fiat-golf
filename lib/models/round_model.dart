@@ -119,7 +119,102 @@ class HoleData {
   }
 
   int get penaltyStrokes => (teeOb * 2) + (secondOb * 2) + teeHazard + secondHazard;
-  int get qPoint => (score == -99 || putt == -99) ? 0 : (6 - score - putt).clamp(0, 5);
+  int get qPoint => getPlayerQPoint(0);
+
+  int getPlayerQPoint(int playerIndex) {
+    int s, p;
+    if (playerIndex == 0) {
+      s = score;
+      p = putt;
+    } else {
+      int cIdx = playerIndex - 1;
+      s = (companionScores.length > cIdx) ? companionScores[cIdx] : -99;
+      p = (companionPutts.length > cIdx) ? companionPutts[cIdx] : -99;
+    }
+    
+    if (s == -99 || p == -99) return 0;
+
+    // 1. 버디 이상은 무조건 4점
+    if (s < 0) return 4;
+
+    // 2. 파
+    if (s == 0) {
+      if (p <= 1) return 4;
+      if (p == 2) return 3;
+      if (p >= 3) return 2;
+    }
+
+    // 3. 보기
+    if (s == 1) {
+      if (p <= 1) return 3;
+      if (p == 2) return 2;
+      if (p >= 3) return 1;
+    }
+
+    // 4. 더블
+    if (s == 2) {
+      if (p <= 1) return 2;
+      if (p >= 2) return 1;
+    }
+
+    // 5. 트리플 이상 0점
+    return 0;
+  }
+}
+
+class HoleQPointInfo {
+  final int holeNumber;
+  final int par;
+  final int on;
+  final int putt;
+  final String scoreLabel;
+  final int points;
+
+  HoleQPointInfo({
+    required this.holeNumber,
+    required this.par,
+    required this.on,
+    required this.putt,
+    required this.scoreLabel,
+    required this.points,
+  });
+}
+
+class QPointBreakdown {
+  final int holePoints;
+  final bool under80;
+  final bool scrambling;
+  final bool noPenalty;
+  final bool digital;
+  final bool noThreePutt;
+  final bool gir50;
+  final bool puttsUnder30;
+  final int bounceBackCount;
+  final List<HoleQPointInfo> holeDetails;
+
+  QPointBreakdown({
+    required this.holePoints,
+    required this.under80,
+    required this.scrambling,
+    required this.noPenalty,
+    required this.digital,
+    required this.noThreePutt,
+    required this.gir50,
+    required this.puttsUnder30,
+    required this.bounceBackCount,
+    required this.holeDetails,
+  });
+
+  int get bonusPoints => (under80 ? 4 : 0) + 
+                        (scrambling ? 4 : 0) + 
+                        (noPenalty ? 4 : 0) + 
+                        (digital ? 4 : 0) + 
+                        (noThreePutt ? 4 : 0) +
+                        (gir50 ? 4 : 0) +
+                        (puttsUnder30 ? 4 : 0) +
+                        (bounceBackCount * 2);
+
+  int get total => holePoints + bonusPoints;
 }
 
 class RoundData {
@@ -193,43 +288,119 @@ class RoundData {
     );
   }
 
-  int get qPoint {
-    int points = 0;
-    
-    // 보너스 점수 로직 추가
-    int totalPar = holes.fold(0, (total, h) => total + h.par);
-    int grossScore = totalPar + totalScore;
-    if (grossScore <= 79) points += 2;
+  int get qPoint => getPlayerQPoint(0);
 
-    int scramblingChances = 0;
-    int scramblingSuccesses = 0;
+  int getPlayerQPoint(int playerIndex) {
+    return getQPointBreakdown(playerIndex).total;
+  }
+
+  QPointBreakdown getQPointBreakdown(int playerIndex) {
+    int holePoints = 0;
+    List<HoleQPointInfo> holeDetails = [];
+    
+    int totalPar = holes.fold(0, (total, h) => total + h.par);
+    int playerOverUnder = 0;
     int totalPenalty = 0;
     bool hasThreePutt = false;
     bool isDigital = true;
+    int scramblingChances = 0;
+    int scramblingSuccesses = 0;
+    int girCount = 0;
+    int totalPutts = 0;
+    int bounceBacks = 0;
+    bool hadBadScoreLastHole = false;
+    bool allHolesEntered = true;
 
     for (var hole in holes) {
-      totalPenalty += hole.penaltyStrokes;
-      if (hole.putt >= 3) hasThreePutt = true;
-      if (hole.score > 1) isDigital = false;
-
-      bool isGir = (hole.score - hole.putt) <= -2;
-      if (!isGir) {
-        scramblingChances++;
-        if (hole.score <= 0) scramblingSuccesses++;
+      int s, p, pen;
+      if (playerIndex == 0) {
+        s = hole.score;
+        p = hole.putt;
+        pen = hole.penaltyStrokes;
+      } else {
+        int cIdx = playerIndex - 1;
+        s = (hole.companionScores.length > cIdx) ? hole.companionScores[cIdx] : -99;
+        p = (hole.companionPutts.length > cIdx) ? hole.companionPutts[cIdx] : -99;
+        pen = (hole.companionPenalties.length > cIdx) ? hole.companionPenalties[cIdx] : 0;
       }
+
+      if (s == -99 || p == -99) {
+        allHolesEntered = false;
+        hadBadScoreLastHole = false;
+        holeDetails.add(HoleQPointInfo(
+          holeNumber: hole.holeNumber,
+          par: hole.par,
+          on: 0,
+          putt: 0,
+          scoreLabel: '미입력',
+          points: 0,
+        ));
+        continue;
+      }
+
+      playerOverUnder += s;
+      totalPutts += p;
+      if (p >= 3) hasThreePutt = true;
+      totalPenalty += pen;
+      if (s > 1) isDigital = false;
+
+      // Bounce Back logic: Bad score (Double+) -> Good score (Par-)
+      if (hadBadScoreLastHole && s <= 0) {
+        bounceBacks++;
+      }
+      hadBadScoreLastHole = (s >= 2);
+
+      // On = Hole Par + Score - Putts
+      int on = hole.par + s - p;
+
+      bool isGir = (s - p) <= -2;
+      if (isGir) {
+        girCount++;
+      } else {
+        scramblingChances++;
+        if (s <= 0) scramblingSuccesses++;
+      }
+      
+      int hp = hole.getPlayerQPoint(playerIndex);
+      holePoints += hp;
+      
+      holeDetails.add(HoleQPointInfo(
+        holeNumber: hole.holeNumber,
+        par: hole.par,
+        on: on,
+        putt: p,
+        scoreLabel: _getScoreLabel(s, hole.par),
+        points: hp,
+      ));
     }
 
-    if (scramblingChances > 0 && (scramblingSuccesses / scramblingChances) >= 0.5) points += 2;
-    if (totalPenalty == 0) points += 2;
-    if (isDigital) points += 2;
-    if (!hasThreePutt) points += 2;
+    bool complete = holes.length == 18 && allHolesEntered;
+    
+    return QPointBreakdown(
+      holePoints: holePoints,
+      under80: complete && (totalPar + playerOverUnder) <= 79,
+      scrambling: complete && scramblingChances > 0 && (scramblingSuccesses / scramblingChances) >= 0.5,
+      noPenalty: complete && totalPenalty == 0,
+      digital: complete && isDigital,
+      noThreePutt: complete && !hasThreePutt,
+      gir50: complete && (girCount / 18) >= 0.5,
+      puttsUnder30: complete && totalPutts <= 29,
+      bounceBackCount: bounceBacks,
+      holeDetails: holeDetails,
+    );
+  }
 
-    for (var hole in holes) {
-      // hole.score는 오버/언더파 값 (0=Par, 1=Bogey, -1=Birdie 등)
-      // 새 공식: (6 - score - putt).clamp(0, 5) -> HoleData.qPoint
-      // 미입력 홀은 0점을 반환하도록 HoleData에서 처리됨
-      points += hole.qPoint;
-    }
-    return points;
+  String _getScoreLabel(int score, int par) {
+    if (score == -99) return '미입력';
+    if (score <= -3) return 'Albatross';
+    if (score == -2) return 'Eagle';
+    if (score == -1) return 'Birdie';
+    if (score == 0) return 'Par';
+    if (score >= par) return 'Double Par';
+    if (score == 1) return 'Bogey';
+    if (score == 2) return 'Double Bogey';
+    if (score == 3) return 'Triple Bogey';
+    if (score == 4) return 'Quadruple Bogey';
+    return (score > 0) ? '+$score' : '$score';
   }
 }

@@ -204,7 +204,20 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
   int get _overUnder => _holes.fold(0, (sum, hole) => sum + (hole.score == -99 ? 0 : hole.score)); // 미입력은 Par(0) 취급
   int get _totalPar => _holes.fold(0, (sum, hole) => sum + hole.par);
   int get _totalGross => _totalPar + _overUnder; 
-  int get _totalPutt => _holes.fold(0, (sum, hole) => sum + (hole.putt == -99 ? 2 : hole.putt)); // 미입력은 2퍼트 취급
+  int get _totalPutt => _holes.fold(0, (sum, hole) => sum + (hole.putt == -99 ? 0 : hole.putt)); // 미입력은 0퍼트 취급 (반영 기준 일치)
+  int get _qPoint {
+    return RoundData(
+      date: _selectedDate,
+      teeUpTime: '',
+      golfCourseName: '',
+      frontCourseName: '',
+      backCourseName: '',
+      companions: [],
+      totalScore: _overUnder,
+      holes: _holes,
+      createdAt: DateTime.now(),
+    ).qPoint;
+  }
 
   String get _overUnderStr {
     final ou = _overUnder;
@@ -468,7 +481,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.round != null ? '기록 수정 (v1.2.0)' : '기록 추가 (v1.2.0)'),
+        title: Text(widget.round != null ? '기록 수정 (v1.3.0)' : '기록 추가 (v1.3.0)'),
         actions: [
           if (widget.round != null)
             IconButton(
@@ -718,12 +731,31 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text('홀별 스코어', style: Theme.of(context).textTheme.titleLarge),
-                              Text(
-                                '$_totalGross($_overUnderStr), $_totalPutt putt', 
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold, 
-                                  fontSize: 18, 
-                                  color: _overUnder < 0 ? Colors.red : (_overUnder == 0 ? Colors.black87 : Colors.blue)
+                              GestureDetector(
+                                onTap: () {
+                                  final tempRound = RoundData(
+                                    date: _selectedDate,
+                                    teeUpTime: '',
+                                    golfCourseName: _golfCourseCtrl.text,
+                                    frontCourseName: _frontCourseCtrl.text,
+                                    backCourseName: _backCourseCtrl.text,
+                                    companions: [],
+                                    totalScore: _overUnder,
+                                    holes: _holes,
+                                    createdAt: DateTime.now(),
+                                  );
+                                  final List<String> compNames = _companionsCtrl.text.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+                                  final allNames = [AuthService().currentUser?.displayName ?? '나', ...compNames];
+                                  final breakdown = tempRound.getQPointBreakdown(0);
+                                  _showQPointBreakdown(context, allNames[0], breakdown);
+                                },
+                                child: Text(
+                                  '$_totalGross($_overUnderStr), $_totalPutt putt, Q ${_qPoint}pt', 
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold, 
+                                    fontSize: 18, 
+                                    color: _overUnder < 0 ? Colors.red : (_overUnder == 0 ? Colors.black87 : Colors.blue)
+                                  ),
                                 ),
                               ),
                             ],
@@ -1305,34 +1337,38 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // 선수 선택 칩
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.only(left: 8.0, bottom: 16.0),
-            child: Row(
-              children: players.asMap().entries.map((e) {
-                final idx = e.key;
-                final name = e.value;
-                final isSelected = _selectedScorecardPlayerIndex == idx;
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8.0),
-                  child: ChoiceChip(
-                    label: Text(name),
-                    selected: isSelected,
-                    onSelected: (bool selected) {
-                      if (selected) {
-                        setState(() {
-                          _selectedScorecardPlayerIndex = idx;
-                        });
-                      }
-                    },
-                    selectedColor: const Color(0xFF27AE60).withOpacity(0.2),
-                    labelStyle: TextStyle(
-                      color: isSelected ? const Color(0xFF27AE60) : Colors.black87,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal
+          Align(
+            alignment: Alignment.center,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, bottom: 16.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: players.asMap().entries.map((e) {
+                  final idx = e.key;
+                  final name = e.value;
+                  final isSelected = _selectedScorecardPlayerIndex == idx;
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8.0),
+                    child: ChoiceChip(
+                      label: Text(name),
+                      selected: isSelected,
+                      onSelected: (bool selected) {
+                        if (selected) {
+                          setState(() {
+                            _selectedScorecardPlayerIndex = idx;
+                          });
+                        }
+                      },
+                      selectedColor: const Color(0xFF27AE60).withOpacity(0.2),
+                      labelStyle: TextStyle(
+                        color: isSelected ? const Color(0xFF27AE60) : Colors.black87,
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal
+                      ),
                     ),
-                  ),
-                );
-              }).toList(),
+                  );
+                }).toList(),
+              ),
             ),
           ),
           
@@ -1700,9 +1736,31 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
     String overUnderStr = tScore == 0 ? 'E' : (tScore > 0 ? '+$tScore' : '$tScore');
     Color tColor = tScore < 0 ? Colors.red : (tScore == 0 ? Colors.black87 : Colors.blue);
     
-    return Text(
-      '$gross($overUnderStr), $tPutt putt', 
-      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: tColor),
+    // Q-point 계산
+    final List<String> compNames = _companionsCtrl.text.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+    final tempRound = RoundData(
+      date: _selectedDate,
+      teeUpTime: '',
+      golfCourseName: _golfCourseCtrl.text,
+      frontCourseName: _frontCourseCtrl.text,
+      backCourseName: _backCourseCtrl.text,
+      companions: compNames,
+      totalScore: 0,
+      holes: _holes,
+      createdAt: DateTime.now(),
+    );
+    int qp = tempRound.getQPointBreakdown(playerIndex - 1).total;
+
+    return InkWell(
+      onTap: () {
+        final List<String> compNames = _companionsCtrl.text.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+        final List<String> localAllNames = [AuthService().currentUser?.displayName ?? '나', ...compNames];
+        _showQPointBreakdown(context, localAllNames[playerIndex - 1], tempRound.getQPointBreakdown(playerIndex - 1));
+      },
+      child: Text(
+        '$gross($overUnderStr), $tPutt putt, Q ${qp}pt', 
+        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: tColor),
+      ),
     );
   }
   
@@ -1811,10 +1869,10 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
           _buildLegendItem('더블보기 이상', Colors.blue),
           const SizedBox(width: 8),
           const Text('★', style: TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.bold)),
-          const Text('성공', style: TextStyle(fontSize: 11, color: Colors.black87)),
-          const SizedBox(width: 6),
+          const Text(' 니어 성공', style: TextStyle(fontSize: 11, color: Colors.black87)),
+          const SizedBox(width: 8),
           const Text('X', style: TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.bold)),
-          const Text('실패', style: TextStyle(fontSize: 11, color: Colors.black87)),
+          const Text(' 니어 실패', style: TextStyle(fontSize: 11, color: Colors.black87)),
         ],
       ),
     );
@@ -1940,7 +1998,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
                       const SizedBox(height: 4),
                       Text(
                         totals[i] == 0 ? '0' : (isPositive ? '+$formattedAmount' : '-$formattedAmount'),
-                        textAlign: TextAlign.right,
+                        textAlign: TextAlign.center,
                         style: TextStyle(
                           color: amountColor,
                           fontWeight: FontWeight.bold,
@@ -1951,6 +2009,13 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
                   ),
                 );
               }),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Center(
+            child: Text(
+              'App Version v1.3.0',
+              style: TextStyle(fontSize: 10, color: Colors.grey.withOpacity(0.5)),
             ),
           ),
         ],
@@ -1975,6 +2040,119 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
     if (score == -99) return Colors.grey;
     if (score < 0) return Colors.red;
     return Colors.black87;
+  }
+
+  void _showQPointBreakdown(BuildContext context, String playerName, QPointBreakdown breakdown) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          backgroundColor: const Color(0xFFF1F4F1),
+          insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('${_golfCourseCtrl.text.isEmpty ? "신규코스" : _golfCourseCtrl.text} Q-Point 상세', 
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+                  ],
+                ),
+                const Divider(color: Colors.grey, height: 10),
+                const SizedBox(height: 5),
+                _buildBonusRow('Sub-80 Round', breakdown.under80 ? 4 : 0),
+                _buildBonusRow('Scrambling 50%+', breakdown.scrambling ? 4 : 0),
+                _buildBonusRow('One Ball Play', breakdown.noPenalty ? 4 : 0),
+                _buildBonusRow('Digital Round', breakdown.digital ? 4 : 0),
+                _buildBonusRow('No Three Putt', breakdown.noThreePutt ? 4 : 0),
+                _buildBonusRow('GIR 50%+', breakdown.gir50 ? 4 : 0),
+                _buildBonusRow('Putts 29 or less', breakdown.puttsUnder30 ? 4 : 0),
+                _buildBonusRow('Bounce Back', breakdown.bounceBackCount * 2),
+                const Divider(color: Colors.grey, height: 10),
+                Flexible(
+                  child: GridView.builder(
+                    shrinkWrap: true,
+                    padding: EdgeInsets.zero,
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      childAspectRatio: 4.8,
+                      crossAxisSpacing: 10,
+                    ),
+                    itemCount: breakdown.holeDetails.length,
+                    itemBuilder: (context, index) {
+                      final d = breakdown.holeDetails[index];
+                      return Container(
+                        padding: const EdgeInsets.symmetric(vertical: 0.5),
+                        decoration: BoxDecoration(border: Border(bottom: BorderSide(color: Colors.grey.shade200, width: 0.5))),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                '${d.holeNumber}번홀 ${d.on}온 ${d.putt}펏, ${d.scoreLabel}',
+                                style: const TextStyle(fontSize: 10.5, color: Colors.blueGrey),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            Text(
+                              '${d.points}',
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blue),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const Divider(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('$playerName님의 총 Q-Point', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    Text('${breakdown.total}pt', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFFD4AF37))),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('닫기', style: TextStyle(color: Color(0xFF27AE60), fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildBonusRow(String title, int points) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(title, style: const TextStyle(color: Colors.black87, fontSize: 14)),
+          Text(
+            '$points',
+            style: TextStyle(
+              color: points > 0 ? Colors.blue : Colors.grey,
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
