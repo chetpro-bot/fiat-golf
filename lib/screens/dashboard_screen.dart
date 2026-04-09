@@ -27,38 +27,64 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Future<void> _checkUserName() async {
     final user = AuthService().currentUser;
     if (user != null && (user.displayName == null || user.displayName!.isEmpty)) {
-      final nameCtrl = TextEditingController();
-      final bool? success = await showDialog<bool>(
-        context: context,
-        barrierDismissible: false, // 작성할 때까지 닫기 불가
-        builder: (ctx) => AlertDialog(
-          title: const Text('이름 설정'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('기존에 가입하신 회원님이시네요!\n코스별 기록 저장을 위해 닉네임을 설정해주세요.'),
-              const SizedBox(height: 16),
-              TextField(
-                controller: nameCtrl,
-                decoration: const InputDecoration(labelText: '이름 (닉네임)', border: OutlineInputBorder()),
-              )
-            ],
-          ),
-          actions: [
-            ElevatedButton(
-              onPressed: () async {
-                if (nameCtrl.text.trim().isNotEmpty) {
-                  await AuthService().updateName(nameCtrl.text.trim());
-                  if (ctx.mounted) Navigator.pop(ctx, true);
-                }
-              },
-              child: const Text('저장'),
+      _showNameEditDialog(isInitial: true);
+    }
+  }
+
+  Future<void> _showNameEditDialog({bool isInitial = false}) async {
+    final user = AuthService().currentUser;
+    final nameCtrl = TextEditingController(text: user?.displayName);
+    
+    final bool? success = await showDialog<bool>(
+      context: context,
+      barrierDismissible: !isInitial,
+      builder: (ctx) => AlertDialog(
+        title: Text(isInitial ? '이름 설정' : '프로필 수정'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(isInitial 
+              ? '기존에 가입하신 회원님이시네요!\n코스별 기록 저장을 위해 닉네임을 설정해주세요.' 
+              : '사용하실 이름을 입력해 주세요.'),
+            const SizedBox(height: 16),
+            TextField(
+              controller: nameCtrl,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: '이름 (닉네임)', 
+                border: OutlineInputBorder(),
+                hintText: '예: 홍길동',
+              ),
             )
           ],
         ),
-      );
-      if (success == true) {
-        setState(() {}); // 프로필 갱신
+        actions: [
+          if (!isInitial)
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('취소'),
+            ),
+          ElevatedButton(
+            onPressed: () async {
+              final newName = nameCtrl.text.trim();
+              if (newName.isNotEmpty) {
+                await AuthService().updateName(newName);
+                if (ctx.mounted) Navigator.pop(ctx, true);
+              }
+            },
+            child: const Text('저장'),
+          )
+        ],
+      ),
+    );
+
+    if (success == true) {
+      if (mounted) setState(() {}); // 프로필 갱신
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('프로필 이름이 업데이트되었습니다.')),
+        );
       }
     }
   }
@@ -75,6 +101,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
           onPressed: () => AuthService().signOut(),
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.person_outline),
+            tooltip: '프로필 수정',
+            onPressed: () => _showNameEditDialog(),
+          ),
           IconButton(
             icon: const Icon(Icons.bar_chart),
             tooltip: '통계 대시보드',
