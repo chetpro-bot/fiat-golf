@@ -284,13 +284,13 @@ class ScorecardScreen extends StatelessWidget {
         nearestMarker = const Positioned(
           top: 1,
           right: 2,
-          child: Text('★', style: TextStyle(color: Color(0xFFD4AF37), fontSize: 10, fontWeight: FontWeight.bold)),
+          child: Text('★', style: TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.bold)),
         );
       } else {
         nearestMarker = const Positioned(
           top: 1,
           right: 2,
-          child: Text('x', style: TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.bold)),
+          child: Text('x', style: TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.bold)),
         );
       }
     }

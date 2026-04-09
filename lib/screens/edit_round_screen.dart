@@ -1720,14 +1720,14 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
       if (score <= 0) {
         nearestMarker = const Positioned(
           top: 0,
-          right: 1,
-          child: Text('★', style: TextStyle(color: Color(0xFFD4AF37), fontSize: 9, fontWeight: FontWeight.bold)),
+          right: 2,
+          child: Text('★', style: TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.bold)),
         );
       } else {
         nearestMarker = const Positioned(
           top: 0,
-          right: 1,
-          child: Text('x', style: TextStyle(color: Colors.white70, fontSize: 9, fontWeight: FontWeight.bold)),
+          right: 2,
+          child: Text('x', style: TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.bold)),
         );
       }
     }
