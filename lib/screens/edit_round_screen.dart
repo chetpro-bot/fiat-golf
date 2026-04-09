@@ -1341,7 +1341,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
             alignment: Alignment.center,
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, bottom: 16.0),
+              padding: const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 16.0),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: players.asMap().entries.map((e) {
