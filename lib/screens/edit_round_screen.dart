@@ -14,9 +14,10 @@ class EditRoundScreen extends StatefulWidget {
   State<EditRoundScreen> createState() => _EditRoundScreenState();
 }
 
-class _EditRoundScreenState extends State<EditRoundScreen> {
+class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingObserver {
   final _formKey = GlobalKey<FormState>();
   
+  String? _currentDocId;
   late DateTime _selectedDate;
   late TimeOfDay _selectedTime;
   
@@ -41,6 +42,8 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _currentDocId = widget.round?.id;
     _loadCourseDatabase();
     // 데이터 초기화 세팅
     if (widget.round != null) {
@@ -116,11 +119,20 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _golfCourseCtrl.dispose();
     _frontCourseCtrl.dispose();
     _backCourseCtrl.dispose();
     _companionsCtrl.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // 앱이 백그라운드로 가거나 비활성화될 때 자동 저장
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+      _saveRecord(isAutosave: true);
+    }
   }
 
   Future<void> _selectDate() async {
@@ -199,8 +211,12 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
     return ou > 0 ? '+$ou' : (ou < 0 ? '$ou' : 'E');
   }
 
-  Future<void> _saveRecord() async {
-    if (!_formKey.currentState!.validate()) return;
+  Future<void> _saveRecord({bool isAutosave = false}) async {
+    // 자동 저장인 경우 밸리데이션 생략 (데이터 유실 방지가 우선)
+    if (!isAutosave && !_formKey.currentState!.validate()) return;
+    
+    // 이미 저장 중이면 중복 실행 방지
+    if (_isSaving && !isAutosave) return;
     
     // UI Rebuild(setState)가 일어나기 전에 화면의 텍스트 값을 안전하게 미리 캡처합니다.
     final capturedGolfCourse = _internalGolfCourseCtrl?.text.trim() ?? _golfCourseCtrl.text.trim();
@@ -209,7 +225,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
     final capturedBackCourse = (_internalBackCourseCtrl?.text.trim() ?? _backCourseCtrl.text.trim()).isNotEmpty 
         ? (_internalBackCourseCtrl?.text.trim() ?? _backCourseCtrl.text.trim()) : '후반';
 
-    setState(() => _isSaving = true);
+    if (!isAutosave) setState(() => _isSaving = true);
     
     try {
       final String teeUpTimeStr = '${_selectedTime.hour.toString().padLeft(2, '0')}:${_selectedTime.minute.toString().padLeft(2, '0')}';
@@ -219,9 +235,10 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
           .where((e) => e.isNotEmpty)
           .toList();
 
-      String? docId = widget.round?.id;
+      String? docId = _currentDocId;
       if (docId == null) {
         docId = FirebaseFirestore.instance.collection('rounds').doc().id;
+        _currentDocId = docId;
       }
 
       // 저장 전, 미입력(-99) 구역을 그대로 유지
@@ -374,25 +391,26 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
         }
       }
 
-      if (mounted) {
+      if (mounted && !isAutosave) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(enteredHolesCount < 18 
-              ? '$enteredHolesCount홀의 기록이 저장되었습니다. (18홀 미입력으로 통계는 제공되지 않습니다)' 
+              ? '$enteredHolesCount홀의 기록이 중간 저장되었습니다. (작업 계속 가능)' 
               : '18홀 기록이 모두 저장되었습니다.'),
             backgroundColor: enteredHolesCount < 18 ? Colors.orange : Colors.green,
+            duration: const Duration(seconds: 2),
           ),
         );
-        Navigator.pop(context); // 저장 완료 후 화면 닫기
+        // Navigator.pop(context); // 더 이상 저장 후 자동으로 나가지 않음
       }
       
     } catch (e, stack) {
-      if (mounted) {
+      if (mounted && !isAutosave) {
         showDialog(
           context: context,
           builder: (ctx) => AlertDialog(
-            title: const Text('저장 오류 분석기'),
-            content: SingleChildScrollView(child: Text('에러원인:\n$e\n\n$stack')),
+            title: const Text('저장 오류'),
+            content: SingleChildScrollView(child: Text('상태를 저장하던 중 오류가 발생했습니다: $e')),
             actions: [
               TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('확인'))
             ],
@@ -400,7 +418,9 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
         );
       }
     } finally {
-      if (mounted) setState(() => _isSaving = false);
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
     }
   }
 
@@ -449,13 +469,37 @@ class _EditRoundScreenState extends State<EditRoundScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.round != null ? '기록 수정 (v1.1.0)' : '기록 추가 (v1.1.0)'),
-        actions: widget.round != null ? [
-          IconButton(
-            icon: const Icon(Icons.delete, color: Colors.redAccent),
-            tooltip: '라운드 삭제',
-            onPressed: () => _confirmDelete(),
-          )
-        ] : null,
+        actions: [
+          if (widget.round != null)
+            IconButton(
+              icon: const Icon(Icons.delete, color: Colors.black26),
+              tooltip: '라운드 삭제',
+              onPressed: () => _confirmDelete(),
+            ),
+          TextButton(
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: const Text('입력 종료'),
+                  content: const Text('입력 중인 화면을 나갈까요?\n저장하지 않은 데이터가 있다면 중간 저장을 눌러주세요.'),
+                  actions: [
+                    TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('계속 입력')),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        Navigator.pop(context);
+                      },
+                      child: const Text('나가기'),
+                    )
+                  ],
+                ),
+              );
+            },
+            child: const Text('나가기', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+          ),
+        ],
       ),
       body: Form(
         key: _formKey,
