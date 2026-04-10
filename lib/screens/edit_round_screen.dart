@@ -481,7 +481,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.round != null ? '기록 수정 (v1.3.0)' : '기록 추가 (v1.3.0)'),
+        title: Text(widget.round != null ? '기록 수정 (v1.3.1)' : '기록 추가 (v1.3.1)'),
         actions: [
           if (widget.round != null)
             IconButton(
@@ -1337,21 +1337,18 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // 선수 선택 칩
-          Align(
-            alignment: Alignment.center,
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 16.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: players.asMap().entries.map((e) {
-                  final idx = e.key;
-                  final name = e.value;
-                  final isSelected = _selectedScorecardPlayerIndex == idx;
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8.0),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 16.0),
+            child: Row(
+              children: players.asMap().entries.map((e) {
+                final idx = e.key;
+                final name = e.value;
+                final isSelected = _selectedScorecardPlayerIndex == idx;
+                return Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.only(right: e.key == players.length - 1 ? 0 : 4.0),
                     child: ChoiceChip(
-                      label: Text(name),
+                      label: Center(child: Text(name, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13))),
                       selected: isSelected,
                       onSelected: (bool selected) {
                         if (selected) {
@@ -1365,10 +1362,12 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
                         color: isSelected ? const Color(0xFF27AE60) : Colors.black87,
                         fontWeight: isSelected ? FontWeight.bold : FontWeight.normal
                       ),
+                      padding: EdgeInsets.zero,
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
-                  );
-                }).toList(),
-              ),
+                  ),
+                );
+              }).toList(),
             ),
           ),
           
@@ -2014,7 +2013,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
           const SizedBox(height: 8),
           Center(
             child: Text(
-              'App Version v1.3.0',
+              'App Version v1.3.1',
               style: TextStyle(fontSize: 10, color: Colors.grey.withOpacity(0.5)),
             ),
           ),
@@ -2077,38 +2076,26 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
                 _buildBonusRow('Bounce Back', breakdown.bounceBackCount * 2),
                 const Divider(color: Colors.grey, height: 10),
                 Flexible(
-                  child: GridView.builder(
-                    shrinkWrap: true,
-                    padding: EdgeInsets.zero,
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      childAspectRatio: 4.8,
-                      crossAxisSpacing: 10,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey.shade300, width: 0.5),
                     ),
-                    itemCount: breakdown.holeDetails.length,
-                    itemBuilder: (context, index) {
-                      final d = breakdown.holeDetails[index];
-                      return Container(
-                        padding: const EdgeInsets.symmetric(vertical: 0.5),
-                        decoration: BoxDecoration(border: Border(bottom: BorderSide(color: Colors.grey.shade200, width: 0.5))),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    child: Table(
+                      border: TableBorder(
+                        verticalInside: BorderSide(color: Colors.grey.shade300, width: 0.5),
+                        horizontalInside: BorderSide(color: Colors.grey.shade200, width: 0.5),
+                      ),
+                      children: List.generate(9, (rowIndex) {
+                        final leftHole = breakdown.holeDetails[rowIndex];
+                        final rightHole = breakdown.holeDetails[rowIndex + 9];
+                        return TableRow(
                           children: [
-                            Expanded(
-                              child: Text(
-                                '${d.holeNumber}번홀 ${d.on}온 ${d.putt}펏, ${d.scoreLabel}',
-                                style: const TextStyle(fontSize: 10.5, color: Colors.blueGrey),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            Text(
-                              '${d.points}',
-                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blue),
-                            ),
+                            _buildQPointHoleCell(leftHole),
+                            _buildQPointHoleCell(rightHole),
                           ],
-                        ),
-                      );
-                    },
+                        );
+                      }),
+                    ),
                   ),
                 ),
                 const Divider(height: 10),
@@ -2132,6 +2119,28 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
           ),
         );
       },
+    );
+  }
+
+  Widget _buildQPointHoleCell(HoleQPointInfo d) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: Text(
+              '${d.holeNumber}번 ${d.on}온 ${d.putt}펏, ${d.scoreLabel}',
+              style: const TextStyle(fontSize: 10, color: Colors.blueGrey),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          Text(
+            '${d.points}',
+            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.blue),
+          ),
+        ],
+      ),
     );
   }
 
