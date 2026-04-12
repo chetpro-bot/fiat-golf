@@ -1,9 +1,10 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import '../models/round_model.dart';
 import '../services/auth_service.dart';
 import '../services/betting_service.dart';
+import '../widgets/q_point_breakdown_dialog.dart';
 
 class EditRoundScreen extends StatefulWidget {
   final RoundData? round; // null이면 신규 생성, 값이 있으면 수정 모드
@@ -2041,127 +2042,13 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
     return Colors.black87;
   }
 
+
   void _showQPointBreakdown(BuildContext context, String playerName, QPointBreakdown breakdown) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return Dialog(
-          backgroundColor: const Color(0xFFF1F4F1),
-          insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('${_golfCourseCtrl.text.isEmpty ? "신규코스" : _golfCourseCtrl.text} Q-Point 상세', 
-                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
-                  ],
-                ),
-                const Divider(color: Colors.grey, height: 10),
-                const SizedBox(height: 5),
-                _buildBonusRow('Sub-80 Round', breakdown.under80 ? 4 : 0),
-                _buildBonusRow('Scrambling 50%+', breakdown.scrambling ? 4 : 0),
-                _buildBonusRow('One Ball Play', breakdown.noPenalty ? 4 : 0),
-                _buildBonusRow('Digital Round', breakdown.digital ? 4 : 0),
-                _buildBonusRow('No Three Putt', breakdown.noThreePutt ? 4 : 0),
-                _buildBonusRow('GIR 50%+', breakdown.gir50 ? 4 : 0),
-                _buildBonusRow('Putts 29 or less', breakdown.puttsUnder30 ? 4 : 0),
-                _buildBonusRow('Bounce Back', breakdown.bounceBackCount * 2),
-                const Divider(color: Colors.grey, height: 10),
-                Flexible(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey.shade300, width: 0.5),
-                    ),
-                    child: Table(
-                      border: TableBorder(
-                        verticalInside: BorderSide(color: Colors.grey.shade300, width: 0.5),
-                        horizontalInside: BorderSide(color: Colors.grey.shade200, width: 0.5),
-                      ),
-                      children: List.generate(9, (rowIndex) {
-                        final leftHole = breakdown.holeDetails[rowIndex];
-                        final rightHole = breakdown.holeDetails[rowIndex + 9];
-                        return TableRow(
-                          children: [
-                            _buildQPointHoleCell(leftHole),
-                            _buildQPointHoleCell(rightHole),
-                          ],
-                        );
-                      }),
-                    ),
-                  ),
-                ),
-                const Divider(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('$playerName님의 총 Q-Point', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                    Text('${breakdown.total}pt', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFFD4AF37))),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('닫기', style: TextStyle(color: Color(0xFF27AE60), fontWeight: FontWeight.bold)),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildQPointHoleCell(HoleQPointInfo d) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Expanded(
-            child: Text(
-              '${d.holeNumber}번 ${d.on}온 ${d.putt}펏, ${d.scoreLabel}',
-              style: const TextStyle(fontSize: 10, color: Colors.blueGrey),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          Text(
-            '${d.points}',
-            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.blue),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBonusRow(String title, int points) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(title, style: const TextStyle(color: Colors.black87, fontSize: 14)),
-          Text(
-            '$points',
-            style: TextStyle(
-              color: points > 0 ? Colors.blue : Colors.grey,
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-            ),
-          ),
-        ],
-      ),
+    showQPointBreakdownDialog(
+      context,
+      courseName: _golfCourseCtrl.text.isEmpty ? '신규코스' : _golfCourseCtrl.text,
+      playerName: playerName,
+      breakdown: breakdown,
     );
   }
 }
-
