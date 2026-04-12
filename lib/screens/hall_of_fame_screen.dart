@@ -64,7 +64,6 @@ class HallOfFameScreen extends StatelessWidget {
                 _RecordCard(
                   icon: '⛳',
                   category: '베스트 스코어',
-                  value: '${records.bestScore!.value}타',
                   entry: records.bestScore!,
                   color: const Color(0xFFE74C3C),
                 ),
@@ -73,7 +72,6 @@ class HallOfFameScreen extends StatelessWidget {
                 _RecordCard(
                   icon: '🎯',
                   category: '최고 GIR',
-                  value: '${records.bestGir!.value}홀 (${((records.bestGir!.value / 18) * 100).toStringAsFixed(1)}%)',
                   entry: records.bestGir!,
                   color: const Color(0xFF27AE60),
                 ),
@@ -82,7 +80,6 @@ class HallOfFameScreen extends StatelessWidget {
                 _RecordCard(
                   icon: '🏌️',
                   category: '최저 퍼팅수',
-                  value: '${records.bestPutt!.value}퍼트',
                   entry: records.bestPutt!,
                   color: const Color(0xFF2980B9),
                 ),
@@ -91,7 +88,6 @@ class HallOfFameScreen extends StatelessWidget {
                 _RecordCard(
                   icon: '⭐',
                   category: 'Q-Point 최고',
-                  value: '${records.bestQPoint!.value}pt',
                   entry: records.bestQPoint!,
                   color: const Color(0xFFD4AF37),
                 ),
@@ -100,7 +96,6 @@ class HallOfFameScreen extends StatelessWidget {
                 _RecordCard(
                   icon: '😅',
                   category: 'Q-Point 최저',
-                  value: '${records.worstQPoint!.value}pt',
                   entry: records.worstQPoint!,
                   color: const Color(0xFF95A5A6),
                 ),
@@ -168,29 +163,61 @@ class HallOfFameScreen extends StatelessWidget {
         if (!allEntered) continue;
 
         final grossScore = totalPar + score;
+        final overUnder = score;
+        final overUnderStr = overUnder >= 0 ? '+$overUnder' : '$overUnder';
 
-        // Q-Point 계산 (playerIndex는 round 기준: 유저=0, 동반자=1~n)
+        // Q-Point 계산
         final qp = round.getQPointBreakdown(pi).total;
 
         // 베스트 스코어 (낮을수록 좋음)
         if (bestScore == null || grossScore < bestScore.value) {
-          bestScore = _HallEntry(playerName: name, courseName: round.golfCourseName, date: round.date, value: grossScore);
+          bestScore = _HallEntry(
+            playerName: name,
+            courseName: round.golfCourseName,
+            date: round.date,
+            value: grossScore,
+            displayValue: '$grossScore($overUnderStr)',
+          );
         }
         // 최고 GIR (높을수록 좋음)
         if (bestGir == null || girCount > bestGir.value) {
-          bestGir = _HallEntry(playerName: name, courseName: round.golfCourseName, date: round.date, value: girCount);
+          bestGir = _HallEntry(
+            playerName: name,
+            courseName: round.golfCourseName,
+            date: round.date,
+            value: girCount,
+            displayValue: '$girCount/18',
+          );
         }
         // 최저 퍼팅수 (낮을수록 좋음)
         if (bestPutt == null || putts < bestPutt.value) {
-          bestPutt = _HallEntry(playerName: name, courseName: round.golfCourseName, date: round.date, value: putts);
+          bestPutt = _HallEntry(
+            playerName: name,
+            courseName: round.golfCourseName,
+            date: round.date,
+            value: putts,
+            displayValue: '$putts퍼트',
+          );
         }
-        // Q-Point 최고 (높을수록 좋음)
+        // Q-Point 최고
         if (bestQPoint == null || qp > bestQPoint.value) {
-          bestQPoint = _HallEntry(playerName: name, courseName: round.golfCourseName, date: round.date, value: qp);
+          bestQPoint = _HallEntry(
+            playerName: name,
+            courseName: round.golfCourseName,
+            date: round.date,
+            value: qp,
+            displayValue: '${qp}pt',
+          );
         }
-        // Q-Point 최저 (낮을수록 좋음)
+        // Q-Point 최저
         if (worstQPoint == null || qp < worstQPoint.value) {
-          worstQPoint = _HallEntry(playerName: name, courseName: round.golfCourseName, date: round.date, value: qp);
+          worstQPoint = _HallEntry(
+            playerName: name,
+            courseName: round.golfCourseName,
+            date: round.date,
+            value: qp,
+            displayValue: '${qp}pt',
+          );
         }
       }
     }
@@ -211,13 +238,15 @@ class _HallEntry {
   final String playerName;
   final String courseName;
   final DateTime date;
-  final int value;
+  final int value;        // 정렬/비교용 숫자
+  final String displayValue; // 화면 표시용 문자열
 
   const _HallEntry({
     required this.playerName,
     required this.courseName,
     required this.date,
     required this.value,
+    required this.displayValue,
   });
 }
 
@@ -246,14 +275,12 @@ class _HallRecords {
 class _RecordCard extends StatelessWidget {
   final String icon;
   final String category;
-  final String value;
   final _HallEntry entry;
   final Color color;
 
   const _RecordCard({
     required this.icon,
     required this.category,
-    required this.value,
     required this.entry,
     required this.color,
   });
@@ -301,7 +328,7 @@ class _RecordCard extends StatelessWidget {
               children: [
                 // 좌: 큰 기록값
                 Text(
-                  value,
+                  entry.displayValue,
                   style: TextStyle(
                     fontSize: 32,
                     fontWeight: FontWeight.w900,
