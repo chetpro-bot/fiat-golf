@@ -358,41 +358,85 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 _buildBonusRow('Putts 29 or less', breakdown.puttsUnder30 ? 4 : 0),
                 _buildBonusRow('Bounce Back', breakdown.bounceBackCount * 2),
                 const Divider(color: Colors.grey, height: 10),
-                Flexible(
-                  child: GridView.builder(
-                    shrinkWrap: true,
-                    padding: EdgeInsets.zero,
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      childAspectRatio: 4.8,
-                      crossAxisSpacing: 10,
-                    ),
-                    itemCount: breakdown.holeDetails.length,
-                    itemBuilder: (context, index) {
-                      final d = breakdown.holeDetails[index];
-                      return Container(
-                        padding: const EdgeInsets.symmetric(vertical: 0.5),
-                        decoration: BoxDecoration(border: Border(bottom: BorderSide(color: Colors.grey.shade200, width: 0.5))),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                '${d.holeNumber}번홀 ${d.on}온 ${d.putt}펏, ${d.scoreLabel}',
-                                style: const TextStyle(fontSize: 10.5, color: Colors.blueGrey),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            Text(
-                              '${d.points}',
-                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blue),
-                            ),
-                          ],
-                        ),
-                      );
+                // 홀 상세: 1-9번(왼쪽) / 10-18번(오른쪽) 나란히 표시
+                if (breakdown.holeDetails.length >= 18)
+                  Table(
+                    columnWidths: const {
+                      0: FlexColumnWidth(1),
+                      1: FlexColumnWidth(1),
                     },
+                    children: List.generate(9, (i) {
+                      final left = breakdown.holeDetails[i];
+                      final right = breakdown.holeDetails[i + 9];
+                      return TableRow(
+                        decoration: BoxDecoration(
+                          border: Border(bottom: BorderSide(color: Colors.grey.shade200, width: 0.5)),
+                        ),
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 3.0, horizontal: 2.0),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    '${left.holeNumber}번 ${left.on}온 ${left.putt}펏, ${left.scoreLabel}',
+                                    style: const TextStyle(fontSize: 10.5, color: Colors.blueGrey),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                Text(
+                                  '${left.points}',
+                                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blue),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 3.0, horizontal: 2.0),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    '${right.holeNumber}번 ${right.on}온 ${right.putt}펏, ${right.scoreLabel}',
+                                    style: const TextStyle(fontSize: 10.5, color: Colors.blueGrey),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                Text(
+                                  '${right.points}',
+                                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blue),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      );
+                    }),
+                  )
+                else
+                  Column(
+                    children: breakdown.holeDetails.map((d) => Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 3.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              '${d.holeNumber}번홀 ${d.on}온 ${d.putt}펏, ${d.scoreLabel}',
+                              style: const TextStyle(fontSize: 10.5, color: Colors.blueGrey),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          Text(
+                            '${d.points}',
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blue),
+                          ),
+                        ],
+                      ),
+                    )).toList(),
                   ),
-                ),
                 const Divider(height: 10),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
