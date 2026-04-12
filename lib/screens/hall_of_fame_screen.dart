@@ -5,9 +5,7 @@ import '../models/round_model.dart';
 import '../services/auth_service.dart';
 
 /// 명예의 전당 화면
-/// - 베스트 스코어 (최저 그로스)
-/// - 최고 GIR (그린 적중률)
-/// - 최저 퍼팅수
+/// - 베스트 스코어 / 최고 GIR / 최저 퍼팅수 / Q-Point 최고 / Q-Point 최저
 /// 유저 본인 + 모든 동반자 데이터를 포함해 집계
 class HallOfFameScreen extends StatelessWidget {
   const HallOfFameScreen({super.key});
@@ -67,32 +65,44 @@ class HallOfFameScreen extends StatelessWidget {
                   icon: '⛳',
                   category: '베스트 스코어',
                   value: '${records.bestScore!.value}타',
-                  playerName: records.bestScore!.playerName,
-                  courseName: records.bestScore!.courseName,
-                  date: records.bestScore!.date,
+                  entry: records.bestScore!,
                   color: const Color(0xFFE74C3C),
                 ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
               if (records.bestGir != null)
                 _RecordCard(
                   icon: '🎯',
                   category: '최고 GIR',
                   value: '${records.bestGir!.value}홀 (${((records.bestGir!.value / 18) * 100).toStringAsFixed(1)}%)',
-                  playerName: records.bestGir!.playerName,
-                  courseName: records.bestGir!.courseName,
-                  date: records.bestGir!.date,
+                  entry: records.bestGir!,
                   color: const Color(0xFF27AE60),
                 ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
               if (records.bestPutt != null)
                 _RecordCard(
                   icon: '🏌️',
                   category: '최저 퍼팅수',
                   value: '${records.bestPutt!.value}퍼트',
-                  playerName: records.bestPutt!.playerName,
-                  courseName: records.bestPutt!.courseName,
-                  date: records.bestPutt!.date,
+                  entry: records.bestPutt!,
                   color: const Color(0xFF2980B9),
+                ),
+              const SizedBox(height: 14),
+              if (records.bestQPoint != null)
+                _RecordCard(
+                  icon: '⭐',
+                  category: 'Q-Point 최고',
+                  value: '${records.bestQPoint!.value}pt',
+                  entry: records.bestQPoint!,
+                  color: const Color(0xFFD4AF37),
+                ),
+              const SizedBox(height: 14),
+              if (records.worstQPoint != null)
+                _RecordCard(
+                  icon: '😅',
+                  category: 'Q-Point 최저',
+                  value: '${records.worstQPoint!.value}pt',
+                  entry: records.worstQPoint!,
+                  color: const Color(0xFF95A5A6),
                 ),
             ],
           );
@@ -105,6 +115,8 @@ class HallOfFameScreen extends StatelessWidget {
     _HallEntry? bestScore;
     _HallEntry? bestGir;
     _HallEntry? bestPutt;
+    _HallEntry? bestQPoint;
+    _HallEntry? worstQPoint;
 
     for (final round in rounds) {
       final enteredHoles = round.holes.where((h) => h.score != -99).length;
@@ -123,7 +135,6 @@ class HallOfFameScreen extends StatelessWidget {
         bool allEntered = true;
 
         if (pi == 0) {
-          // 유저 본인
           final allScored = round.holes.every((h) => h.score != -99 && h.putt != -99);
           if (!allScored) { allEntered = false; }
           score = round.holes.fold(0, (s, h) => s + (h.score == -99 ? 0 : h.score));
@@ -132,7 +143,6 @@ class HallOfFameScreen extends StatelessWidget {
             if (h.score != -99 && h.putt != -99 && (h.score - h.putt) <= -2) girCount++;
           }
         } else {
-          // 동반자
           final cIdx = pi - 1;
           final allScored = round.holes.every((h) =>
               h.companionScores.length > cIdx &&
@@ -158,48 +168,44 @@ class HallOfFameScreen extends StatelessWidget {
         if (!allEntered) continue;
 
         final grossScore = totalPar + score;
-        final entry = _HallEntry(
-          playerName: name,
-          courseName: round.golfCourseName,
-          date: round.date,
-          value: 0,
-        );
+
+        // Q-Point 계산 (playerIndex는 round 기준: 유저=0, 동반자=1~n)
+        final qp = round.getQPointBreakdown(pi).total;
 
         // 베스트 스코어 (낮을수록 좋음)
         if (bestScore == null || grossScore < bestScore.value) {
-          bestScore = _HallEntry(
-            playerName: name,
-            courseName: round.golfCourseName,
-            date: round.date,
-            value: grossScore,
-          );
+          bestScore = _HallEntry(playerName: name, courseName: round.golfCourseName, date: round.date, value: grossScore);
         }
-
         // 최고 GIR (높을수록 좋음)
         if (bestGir == null || girCount > bestGir.value) {
-          bestGir = _HallEntry(
-            playerName: name,
-            courseName: round.golfCourseName,
-            date: round.date,
-            value: girCount,
-          );
+          bestGir = _HallEntry(playerName: name, courseName: round.golfCourseName, date: round.date, value: girCount);
         }
-
         // 최저 퍼팅수 (낮을수록 좋음)
-        if (entry.playerName.isNotEmpty && (bestPutt == null || putts < bestPutt.value)) {
-          bestPutt = _HallEntry(
-            playerName: name,
-            courseName: round.golfCourseName,
-            date: round.date,
-            value: putts,
-          );
+        if (bestPutt == null || putts < bestPutt.value) {
+          bestPutt = _HallEntry(playerName: name, courseName: round.golfCourseName, date: round.date, value: putts);
+        }
+        // Q-Point 최고 (높을수록 좋음)
+        if (bestQPoint == null || qp > bestQPoint.value) {
+          bestQPoint = _HallEntry(playerName: name, courseName: round.golfCourseName, date: round.date, value: qp);
+        }
+        // Q-Point 최저 (낮을수록 좋음)
+        if (worstQPoint == null || qp < worstQPoint.value) {
+          worstQPoint = _HallEntry(playerName: name, courseName: round.golfCourseName, date: round.date, value: qp);
         }
       }
     }
 
-    return _HallRecords(bestScore: bestScore, bestGir: bestGir, bestPutt: bestPutt);
+    return _HallRecords(
+      bestScore: bestScore,
+      bestGir: bestGir,
+      bestPutt: bestPutt,
+      bestQPoint: bestQPoint,
+      worstQPoint: worstQPoint,
+    );
   }
 }
+
+// ─── 데이터 클래스 ───────────────────────────────────────────────
 
 class _HallEntry {
   final String playerName;
@@ -219,28 +225,36 @@ class _HallRecords {
   final _HallEntry? bestScore;
   final _HallEntry? bestGir;
   final _HallEntry? bestPutt;
+  final _HallEntry? bestQPoint;
+  final _HallEntry? worstQPoint;
 
-  const _HallRecords({this.bestScore, this.bestGir, this.bestPutt});
+  const _HallRecords({
+    this.bestScore,
+    this.bestGir,
+    this.bestPutt,
+    this.bestQPoint,
+    this.worstQPoint,
+  });
 
-  bool get isEmpty => bestScore == null && bestGir == null && bestPutt == null;
+  bool get isEmpty =>
+      bestScore == null && bestGir == null && bestPutt == null &&
+      bestQPoint == null && worstQPoint == null;
 }
+
+// ─── 카드 위젯 ────────────────────────────────────────────────────
 
 class _RecordCard extends StatelessWidget {
   final String icon;
   final String category;
   final String value;
-  final String playerName;
-  final String courseName;
-  final DateTime date;
+  final _HallEntry entry;
   final Color color;
 
   const _RecordCard({
     required this.icon,
     required this.category,
     required this.value,
-    required this.playerName,
-    required this.courseName,
-    required this.date,
+    required this.entry,
     required this.color,
   });
 
@@ -260,69 +274,76 @@ class _RecordCard extends StatelessWidget {
         border: Border(left: BorderSide(color: color, width: 5)),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(18.0),
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // 카테고리 헤더
             Row(
               children: [
-                Text(icon, style: const TextStyle(fontSize: 22)),
-                const SizedBox(width: 8),
+                Text(icon, style: const TextStyle(fontSize: 18)),
+                const SizedBox(width: 6),
                 Text(
                   category,
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: 13,
                     fontWeight: FontWeight.bold,
                     color: color,
-                    letterSpacing: 0.5,
+                    letterSpacing: 0.4,
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 10),
-            // 기록값
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 34,
-                fontWeight: FontWeight.w900,
-                color: color,
-                height: 1.0,
-              ),
-            ),
-            const SizedBox(height: 8),
-            // 달성자
+            // 메인 행: 좌=기록값, 우=달성자 이름
             Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                const Icon(Icons.person, size: 16, color: Colors.grey),
-                const SizedBox(width: 4),
+                // 좌: 큰 기록값
                 Text(
-                  playerName,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
+                  value,
+                  style: TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.w900,
+                    color: color,
+                    height: 1.0,
+                  ),
+                ),
+                const Spacer(),
+                // 우: 달성자 이름 (크게 강조)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    entry.playerName,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: color,
+                    ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 4),
-            // 코스명 + 날짜
+            const SizedBox(height: 8),
+            // 하단: 코스명 + 날짜
             Row(
               children: [
-                const Icon(Icons.golf_course, size: 14, color: Colors.grey),
+                const Icon(Icons.golf_course, size: 13, color: Colors.grey),
                 const SizedBox(width: 4),
                 Expanded(
                   child: Text(
-                    courseName,
-                    style: const TextStyle(fontSize: 13, color: Colors.grey),
+                    entry.courseName,
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 Text(
-                  DateFormat('yyyy-MM-dd').format(date),
-                  style: const TextStyle(fontSize: 13, color: Colors.grey),
+                  DateFormat('yyyy-MM-dd').format(entry.date),
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
                 ),
               ],
             ),
