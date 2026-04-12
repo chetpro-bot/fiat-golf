@@ -48,12 +48,12 @@ void showQPointBreakdownDialog(
 
               // 보너스 항목
               _bonusRow('Sub-80 Round',      breakdown.under80       ? 4 : 0),
+              _bonusRow('GIR 50%+',          breakdown.gir50         ? 4 : 0),
               _bonusRow('Scrambling 50%+',   breakdown.scrambling    ? 4 : 0),
+              _bonusRow('Putts 29 or less',  breakdown.puttsUnder30  ? 4 : 0),
+              _bonusRow('No Three Putt',      breakdown.noThreePutt   ? 4 : 0),
               _bonusRow('One Ball Play',      breakdown.noPenalty     ? 4 : 0),
               _bonusRow('Digital Round',      breakdown.digital       ? 4 : 0),
-              _bonusRow('No Three Putt',      breakdown.noThreePutt   ? 4 : 0),
-              _bonusRow('GIR 50%+',          breakdown.gir50         ? 4 : 0),
-              _bonusRow('Putts 29 or less',  breakdown.puttsUnder30  ? 4 : 0),
               _bonusRow('Bounce Back',        breakdown.bounceBackCount * 2),
               const Divider(color: Colors.grey, height: 10),
 
