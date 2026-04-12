@@ -95,7 +95,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('나의 골프 기록 (v1.3.5)'),
+        title: const Text('나의 골프 기록 (v1.3.6)'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         leading: IconButton(
           icon: const Icon(Icons.logout, size: 20),
@@ -314,7 +314,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         height: 30,
         alignment: Alignment.center,
         child: Text(
-          'App Version v1.3.5',
+          'App Version v1.3.6',
           style: TextStyle(fontSize: 10, color: Colors.grey.withOpacity(0.5)),
         ),
       ),
@@ -339,7 +339,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     showQPointBreakdownDialog(
       context,
       courseName: round.golfCourseName,
-      playerName: '나',
+      playerName: AuthService().currentUser?.displayName ?? round.userName ?? '나',
       breakdown: round.getQPointBreakdown(0),
     );
   }
