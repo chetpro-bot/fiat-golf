@@ -7,6 +7,7 @@ import '../models/round_model.dart';
 import '../widgets/q_point_breakdown_dialog.dart';
 import 'edit_round_screen.dart';
 import 'course_list_screen.dart';
+import 'hall_of_fame_screen.dart';
 import 'statistics_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -94,7 +95,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('나의 골프 기록 (v1.3.2)'),
+        title: const Text('나의 골프 기록 (v1.3.3)'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         leading: IconButton(
           icon: const Icon(Icons.logout, size: 20),
@@ -106,6 +107,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
             icon: const Icon(Icons.person_outline),
             tooltip: '프로필 수정',
             onPressed: () => _showNameEditDialog(),
+          ),
+          IconButton(
+            icon: const Icon(Icons.emoji_events),
+            tooltip: '명예의 전당',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const HallOfFameScreen()),
+              );
+            },
           ),
           IconButton(
             icon: const Icon(Icons.bar_chart),
@@ -303,7 +314,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         height: 30,
         alignment: Alignment.center,
         child: Text(
-          'App Version v1.3.2',
+          'App Version v1.3.3',
           style: TextStyle(fontSize: 10, color: Colors.grey.withOpacity(0.5)),
         ),
       ),
