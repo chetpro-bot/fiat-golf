@@ -91,14 +91,6 @@ class HallOfFameScreen extends StatelessWidget {
               
               // 2. 동반자 배틀 (킹 시리즈)
               _sectionHeader('타이틀 매치'),
-              if (records.nearestKing != null)
-                _RecordCard(
-                  icon: '📍',
-                  category: 'Nearest King',
-                  entry: records.nearestKing!,
-                  color: Colors.deepOrange,
-                ),
-              const SizedBox(height: 12),
               if (records.birdieKing != null)
                 _RecordCard(
                   icon: '🐦',
@@ -167,7 +159,6 @@ class HallOfFameScreen extends StatelessWidget {
     _HallEntry? worstQPoint;
     
     // 신규 추가
-    _HallEntry? nearestKing;
     _HallEntry? birdieKing;
     _HallEntry? parKing;
     _HallEntry? bogeyKing;
@@ -189,7 +180,6 @@ class HallOfFameScreen extends StatelessWidget {
         int roundBirdies = 0;
         int roundPars = 0;
         int roundBogeys = 0;
-        int roundNearests = 0;
         
         bool allEntered = true;
 
@@ -205,7 +195,6 @@ class HallOfFameScreen extends StatelessWidget {
               if (h.score == 0) roundPars++;
               if (h.score == 1) roundBogeys++;
             }
-            if (h.nearestPlayerIndex == 0) roundNearests++;
           }
         } else {
           final cIdx = pi - 1;
@@ -230,7 +219,6 @@ class HallOfFameScreen extends StatelessWidget {
               if (cs == 0) roundPars++;
               if (cs == 1) roundBogeys++;
             }
-            if (h.nearestPlayerIndex == pi) roundNearests++;
           }
         }
 
@@ -252,9 +240,6 @@ class HallOfFameScreen extends StatelessWidget {
         }
 
         // 2. 킹 시리즈 (신규)
-        if (roundNearests > 0 && (nearestKing == null || roundNearests > nearestKing.value)) {
-          nearestKing = _HallEntry(playerName: name, courseName: round.golfCourseName, date: round.date, value: roundNearests, displayValue: '$roundNearests회');
-        }
         if (roundBirdies > 0 && (birdieKing == null || roundBirdies > birdieKing.value)) {
           birdieKing = _HallEntry(playerName: name, courseName: round.golfCourseName, date: round.date, value: roundBirdies, displayValue: '$roundBirdies개');
         }
@@ -278,7 +263,7 @@ class HallOfFameScreen extends StatelessWidget {
     return _HallRecords(
       bestScore: bestScore, bestGir: bestGir, bestPutt: bestPutt,
       bestQPoint: bestQPoint, worstQPoint: worstQPoint,
-      nearestKing: nearestKing, birdieKing: birdieKing, parKing: parKing, bogeyKing: bogeyKing,
+      birdieKing: birdieKing, parKing: parKing, bogeyKing: bogeyKing,
     );
   }
 }
@@ -304,20 +289,19 @@ class _HallRecords {
   final _HallEntry? worstQPoint;
   
   // 신규
-  final _HallEntry? nearestKing;
   final _HallEntry? birdieKing;
   final _HallEntry? parKing;
   final _HallEntry? bogeyKing;
 
   const _HallRecords({
     this.bestScore, this.bestGir, this.bestPutt, this.bestQPoint, this.worstQPoint,
-    this.nearestKing, this.birdieKing, this.parKing, this.bogeyKing,
+    this.birdieKing, this.parKing, this.bogeyKing,
   });
 
   bool get isEmpty =>
       bestScore == null && bestGir == null && bestPutt == null &&
       bestQPoint == null && worstQPoint == null &&
-      nearestKing == null && birdieKing == null && parKing == null && bogeyKing == null;
+      birdieKing == null && parKing == null && bogeyKing == null;
 }
 
 class _RecordCard extends StatelessWidget {
