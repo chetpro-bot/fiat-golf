@@ -1852,7 +1852,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
             children: [
               _buildGridCell(allNames[i], isHeader: true),
               for (var h in subHoles) _buildGridScoreCell(h, i + 1),
-              _buildGridScoreCell(null, i + 1, customScore: tempTotal, isBold: true, isTotal: true),
+              _buildGridScoreCell(null, i + 1, customScore: tempTotal, isBold: true, isTotal: true, totalPar: totalPar),
             ],
           )
         );
