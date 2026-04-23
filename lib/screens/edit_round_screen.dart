@@ -1540,7 +1540,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
                     children: [
                       // 선수 선택 칩
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 16.0),
+                    padding: const EdgeInsets.all(16.0),
                     child: Row(
                       children: players.asMap().entries.where((e) {
                 // 동반자가 없으면 '전체' 탭 숨김
