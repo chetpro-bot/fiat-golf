@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 import '../models/round_model.dart';
 import '../services/auth_service.dart';
+import '../services/download_service.dart';
 
 class StatisticsScreen extends StatefulWidget {
   const StatisticsScreen({super.key});
@@ -12,9 +14,10 @@ class StatisticsScreen extends StatefulWidget {
 
 class _StatisticsScreenState extends State<StatisticsScreen> {
   String _selectedFilter = '누적';
+  final GlobalKey _repaintKey = GlobalKey();
+  bool _isDownloading = false;
 
   List<RoundData> _applyFilter(List<RoundData> rounds) {
-    // 18홀이 모두 입력된 라운드만 통계에 포함 (사용자 요청 사항 반영)
     List<RoundData> completeRounds = rounds.where((r) => r.holes.where((h) => h.score != -99).length == 18).toList();
 
     if (_selectedFilter == '올해') {
@@ -26,12 +29,42 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     return completeRounds;
   }
 
+  Future<void> _downloadStats() async {
+    if (_isDownloading) return;
+    setState(() => _isDownloading = true);
+
+    final dateStr = DateFormat('yyyyMMdd').format(DateTime.now());
+    final filename = '골프통계_${_selectedFilter}_$dateStr.png';
+
+    await DownloadService.captureAndDownload(
+      repaintKey: _repaintKey,
+      filename: filename,
+      pixelRatio: 2.5,
+      context: context,
+    );
+
+    if (mounted) setState(() => _isDownloading = false);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('통계 대시보드'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        actions: [
+          IconButton(
+            icon: _isDownloading
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.download),
+            tooltip: '통계 이미지 저장',
+            onPressed: _isDownloading ? null : _downloadStats,
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -69,11 +102,11 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                 final allRounds = snapshot.data!.docs
                     .map((doc) => RoundData.fromMap(doc.id, doc.data() as Map<String, dynamic>))
                     .toList();
-                
+
                 final filteredRounds = _applyFilter(allRounds);
-                
+
                 if (filteredRounds.isEmpty) {
-                   return const Center(child: Text('선택한 조건에 해당하는 라운드 기록이 없습니다.'));
+                  return const Center(child: Text('선택한 조건에 해당하는 라운드 기록이 없습니다.'));
                 }
 
                 return _buildStatisticsDashboard(context, filteredRounds);
@@ -88,7 +121,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   Widget _buildStatisticsDashboard(BuildContext context, List<RoundData> rounds) {
     int totalRounds = rounds.length;
     int totalQPoints = rounds.fold(0, (total, r) => total + r.qPoint);
-    
+
     int totalHoles = 0;
     int girHits = 0;
     int scramblingChances = 0;
@@ -124,13 +157,13 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
       for (var hole in r.holes) {
         totalHoles++;
         totalPutts += hole.putt;
-        
+
         totalPenaltyStrokes += hole.penaltyStrokes;
         teeObCount += hole.teeOb;
         secondObCount += hole.secondOb;
         teeHazardCount += hole.teeHazard;
         secondHazardCount += hole.secondHazard;
-        
+
         if (hole.putt == 1) onePuttCount++;
         else if (hole.putt == 2) twoPuttCount++;
         else if (hole.putt >= 3) threePlusPuttCount++;
@@ -180,97 +213,124 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     double avgSecondOb = totalRounds > 0 ? secondObCount / totalRounds : 0;
     double avgSecondHazard = totalRounds > 0 ? secondHazardCount / totalRounds : 0;
 
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text('총 $totalRounds 라운드 분석', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF27AE60))),
-          ],
-        ),
-        const SizedBox(height: 16),
-        _buildSummaryCard('평균 Q-Point', '${avgQPoint.toStringAsFixed(1)}pt', Icons.stars, const Color(0xFFD4AF37)),
-        const SizedBox(height: 12),
-        Card(
-          elevation: 2,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('📊 기본 통계', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF27AE60))),
-                const Divider(height: 24),
-                Table(
-                  border: TableBorder.all(color: Colors.grey.shade300),
-                  defaultVerticalAlignment: TableCellVerticalAlignment.top,
-                  children: [
-                    TableRow(
-                      decoration: BoxDecoration(color: Colors.grey.shade50),
-                      children: [
-                        _buildStatCell('그린 적중률', '${girPct.toStringAsFixed(1)}% (${_formatAvg(girHits / totalRounds)}/${_formatAvg(totalHoles / totalRounds)})', valueColor: Colors.black87),
-                        _buildStatCell('스크램블링', '${scramblingPct.toStringAsFixed(1)}% (${_formatAvg(scramblingSuccesses / totalRounds)}/${_formatAvg(scramblingChances / totalRounds)})', valueColor: Colors.black87),
-                      ],
-                    ),
-                  ],
+    // 전체 콘텐츠를 RepaintBoundary로 감싸 다운로드 가능하게 함
+    return SingleChildScrollView(
+      child: RepaintBoundary(
+        key: _repaintKey,
+        child: Container(
+          color: Colors.white,
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 타이틀 헤더 (다운로드 이미지에서 식별용)
+              Row(
+                children: [
+                  const Icon(Icons.bar_chart, color: Color(0xFF27AE60), size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    '골프 통계 (${'$_selectedFilter'})',
+                    style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFF27AE60)),
+                  ),
+                  const Spacer(),
+                  Text(
+                    '총 $totalRounds 라운드 분석',
+                    style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF27AE60)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              _buildSummaryCard('평균 Q-Point', '${avgQPoint.toStringAsFixed(1)}pt', Icons.stars, const Color(0xFFD4AF37)),
+              const SizedBox(height: 12),
+              Card(
+                elevation: 2,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('📊 기본 통계', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF27AE60))),
+                      const Divider(height: 24),
+                      Table(
+                        border: TableBorder.all(color: Colors.grey.shade300),
+                        defaultVerticalAlignment: TableCellVerticalAlignment.top,
+                        children: [
+                          TableRow(
+                            decoration: BoxDecoration(color: Colors.grey.shade50),
+                            children: [
+                              _buildStatCell('그린 적중률', '${girPct.toStringAsFixed(1)}% (${_formatAvg(girHits / totalRounds)}/${_formatAvg(totalHoles / totalRounds)})', valueColor: Colors.black87),
+                              _buildStatCell('스크램블링', '${scramblingPct.toStringAsFixed(1)}% (${_formatAvg(scramblingSuccesses / totalRounds)}/${_formatAvg(scramblingChances / totalRounds)})', valueColor: Colors.black87),
+                            ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      const Text('퍼트 통계', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF667C7A))),
+                      const SizedBox(height: 8),
+                      Table(
+                        border: TableBorder.all(color: Colors.grey.shade300),
+                        defaultVerticalAlignment: TableCellVerticalAlignment.top,
+                        children: [
+                          TableRow(
+                            decoration: BoxDecoration(color: Colors.grey.shade50),
+                            children: [
+                              _buildStatCell('총 퍼트 (평균)', '${_formatAvg(totalPutts / totalRounds)} (${avgPutts.toStringAsFixed(1)})', valueColor: Colors.black87),
+                              _buildStatCell('파온 성공시', avgGirPutts > 0 ? avgGirPutts.toStringAsFixed(1) : "0", valueColor: Colors.black87),
+                              _buildStatCell('파온 실패시', avgNonGirPutts > 0 ? avgNonGirPutts.toStringAsFixed(1) : "0", valueColor: Colors.black87),
+                            ],
+                          ),
+                          TableRow(
+                            decoration: BoxDecoration(color: Colors.white),
+                            children: [
+                              _buildStatCell('1퍼트', _formatAvg(onePuttCount / totalRounds), valueColor: Colors.black87),
+                              _buildStatCell('2퍼트', _formatAvg(twoPuttCount / totalRounds), valueColor: Colors.black87),
+                              _buildStatCell('3퍼트 이상', _formatAvg(threePlusPuttCount / totalRounds), valueColor: Colors.black87),
+                            ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      const Text('패널티 통계', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF667C7A))),
+                      const SizedBox(height: 8),
+                      Table(
+                        border: TableBorder.all(color: Colors.grey.shade300),
+                        defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+                        children: [
+                          TableRow(
+                            decoration: BoxDecoration(color: Colors.grey.shade50),
+                            children: [
+                              _buildStatCell('합계 (벌타)', _formatAvg(avgPenaltyStrokes)),
+                              _buildStatCell('티샷 벌타', _buildPenaltyValue(avgTeeOb, avgTeeHazard)),
+                              _buildStatCell('세컨샷 벌타', _buildPenaltyValue(avgSecondOb, avgSecondHazard)),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 16),
-                const Text('퍼트 통계', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF667C7A))),
-                const SizedBox(height: 8),
-                Table(
-                  border: TableBorder.all(color: Colors.grey.shade300),
-                  defaultVerticalAlignment: TableCellVerticalAlignment.top,
-                  children: [
-                    TableRow(
-                      decoration: BoxDecoration(color: Colors.grey.shade50),
-                      children: [
-                        _buildStatCell('총 퍼트 (평균)', '${_formatAvg(totalPutts / totalRounds)} (${avgPutts.toStringAsFixed(1)})', valueColor: Colors.black87),
-                        _buildStatCell('파온 성공시', avgGirPutts > 0 ? avgGirPutts.toStringAsFixed(1) : "0", valueColor: Colors.black87),
-                        _buildStatCell('파온 실패시', avgNonGirPutts > 0 ? avgNonGirPutts.toStringAsFixed(1) : "0", valueColor: Colors.black87),
-                      ],
-                    ),
-                    TableRow(
-                      decoration: BoxDecoration(color: Colors.white),
-                      children: [
-                        _buildStatCell('1퍼트', _formatAvg(onePuttCount / totalRounds), valueColor: Colors.black87),
-                        _buildStatCell('2퍼트', _formatAvg(twoPuttCount / totalRounds), valueColor: Colors.black87),
-                        _buildStatCell('3퍼트 이상', _formatAvg(threePlusPuttCount / totalRounds), valueColor: Colors.black87),
-                      ],
-                    ),
-                  ],
+              ),
+              const SizedBox(height: 24),
+              _buildParStatsCard(par3Strokes, par3Holes, par4Strokes, par4Holes, par5Strokes, par5Holes),
+              const SizedBox(height: 24),
+              _buildScoreDistributionCard(scoreDist, totalHoles, totalRounds),
+
+              // 워터마크
+              const SizedBox(height: 24),
+              Center(
+                child: Text(
+                  'FIAT GOLF  •  ${DateFormat('yyyy-MM-dd').format(DateTime.now())}',
+                  style: TextStyle(fontSize: 11, color: Colors.grey.shade400, letterSpacing: 1.5),
                 ),
-                const SizedBox(height: 16),
-                const Text('패널티 통계', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF667C7A))),
-                const SizedBox(height: 8),
-                Table(
-                  border: TableBorder.all(color: Colors.grey.shade300),
-                  defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-                  children: [
-                    TableRow(
-                      decoration: BoxDecoration(color: Colors.grey.shade50),
-                      children: [
-                        _buildStatCell('합계 (벌타)', _formatAvg(avgPenaltyStrokes)),
-                        _buildStatCell('티샷 벌타', _buildPenaltyValue(avgTeeOb, avgTeeHazard)),
-                        _buildStatCell('세컨샷 벌타', _buildPenaltyValue(avgSecondOb, avgSecondHazard)),
-                      ],
-                    ),
-                  ],
-                ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 8),
+            ],
           ),
         ),
-        
-        const SizedBox(height: 24),
-        _buildParStatsCard(par3Strokes, par3Holes, par4Strokes, par4Holes, par5Strokes, par5Holes),
-        const SizedBox(height: 24),
-        _buildScoreDistributionCard(scoreDist, totalHoles, totalRounds),
-        const SizedBox(height: 40),
-      ],
+      ),
     );
   }
-
 
   String _formatAvg(double v) {
     if (v == v.toInt()) return v.toInt().toString();
@@ -441,7 +501,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
               ),
             ),
           ),
-          SizedBox(width: 85, child: Text('${_formatAvg(avgCount)} (${(pct*100).toStringAsFixed(0)}%)', textAlign: TextAlign.right, style: TextStyle(fontSize: 12, color: Colors.grey.shade700))),
+          SizedBox(width: 85, child: Text('${_formatAvg(avgCount)} (${(pct * 100).toStringAsFixed(0)}%)', textAlign: TextAlign.right, style: TextStyle(fontSize: 12, color: Colors.grey.shade700))),
         ],
       ),
     );

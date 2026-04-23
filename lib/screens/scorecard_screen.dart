@@ -1,34 +1,88 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/round_model.dart';
+import '../services/download_service.dart';
 import '../widgets/q_point_breakdown_dialog.dart';
 import 'edit_round_screen.dart';
 
-class ScorecardScreen extends StatelessWidget {
+class ScorecardScreen extends StatefulWidget {
   final RoundData round;
 
   const ScorecardScreen({super.key, required this.round});
 
   @override
-  Widget build(BuildContext context) {
-    List<String> players = [round.userName ?? '나'];
-    players.addAll(round.companions);
+  State<ScorecardScreen> createState() => _ScorecardScreenState();
+}
 
+class _ScorecardScreenState extends State<ScorecardScreen> {
+  // 탭별로 각각 독립된 RepaintBoundary 키를 갖습니다.
+  final List<GlobalKey> _repaintKeys = [];
+  bool _isDownloading = false;
+  int _currentTabIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    List<String> players = [widget.round.userName ?? '나'];
+    players.addAll(widget.round.companions);
+    _repaintKeys.addAll(List.generate(players.length, (_) => GlobalKey()));
+  }
+
+  List<String> get _players {
+    List<String> p = [widget.round.userName ?? '나'];
+    p.addAll(widget.round.companions);
+    return p;
+  }
+
+  Future<void> _downloadCurrentTab() async {
+    if (_isDownloading) return;
+    setState(() => _isDownloading = true);
+
+    final playerName = _players[_currentTabIndex];
+    final dateStr = DateFormat('yyyyMMdd').format(widget.round.date);
+    final filename = '스코어카드_${widget.round.golfCourseName}_${playerName}_$dateStr.png';
+
+    await DownloadService.captureAndDownload(
+      repaintKey: _repaintKeys[_currentTabIndex],
+      filename: filename,
+      pixelRatio: 2.5,
+      context: context,
+    );
+
+    if (mounted) setState(() => _isDownloading = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return DefaultTabController(
-      length: players.length,
+      length: _players.length,
       child: Scaffold(
         backgroundColor: Colors.white,
         appBar: AppBar(
           title: const Text('스코어카드'),
           backgroundColor: Theme.of(context).colorScheme.inversePrimary,
           bottom: TabBar(
-            isScrollable: players.length > 3,
+            isScrollable: _players.length > 3,
             labelColor: Theme.of(context).colorScheme.primary,
             unselectedLabelColor: Colors.grey,
             indicatorColor: Theme.of(context).colorScheme.primary,
-            tabs: players.map((p) => Tab(text: p)).toList(),
+            tabs: _players.map((p) => Tab(text: p)).toList(),
+            onTap: (index) {
+              setState(() => _currentTabIndex = index);
+            },
           ),
           actions: [
+            IconButton(
+              icon: _isDownloading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.download),
+              tooltip: '스코어카드 이미지 저장',
+              onPressed: _isDownloading ? null : _downloadCurrentTab,
+            ),
             IconButton(
               icon: const Icon(Icons.edit),
               tooltip: '수정하기',
@@ -36,7 +90,7 @@ class ScorecardScreen extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => EditRoundScreen(round: round),
+                    builder: (context) => EditRoundScreen(round: widget.round),
                   ),
                 );
               },
@@ -44,7 +98,7 @@ class ScorecardScreen extends StatelessWidget {
           ],
         ),
         body: TabBarView(
-          children: players.asMap().entries.map((entry) {
+          children: _players.asMap().entries.map((entry) {
             return _buildPlayerTab(context, entry.key, entry.value);
           }).toList(),
         ),
@@ -53,12 +107,12 @@ class ScorecardScreen extends StatelessWidget {
   }
 
   Widget _buildPlayerTab(BuildContext context, int playerIndex, String playerName) {
-    int totalPar = round.holes.fold(0, (sum, h) => sum + h.par);
+    int totalPar = widget.round.holes.fold(0, (sum, h) => sum + h.par);
     int totalPutt = 0;
     int overUnder = 0;
     int totalPenalty = 0;
 
-    for (var h in round.holes) {
+    for (var h in widget.round.holes) {
       if (playerIndex == 0) {
         totalPutt += (h.putt == -99 ? 0 : h.putt);
         overUnder += (h.score == -99 ? 0 : h.score);
@@ -73,111 +127,149 @@ class ScorecardScreen extends StatelessWidget {
 
     int totalGross = totalPar + overUnder;
     String overUnderStr = overUnder > 0 ? '+$overUnder' : (overUnder < 0 ? '$overUnder' : 'E');
-    QPointBreakdown qPointBreakdown = round.getQPointBreakdown(playerIndex);
+    QPointBreakdown qPointBreakdown = widget.round.getQPointBreakdown(playerIndex);
 
+    // 전체 콘텐츠를 RepaintBoundary로 감싸 다운로드 가능하게 함
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      padding: EdgeInsets.zero,
+      child: RepaintBoundary(
+        key: _repaintKeys[playerIndex],
+        child: Container(
+          color: Colors.white,
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Text(
-                  round.golfCourseName,
-                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
+              // 헤더
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    '$totalGross($overUnderStr)',
-                    style: TextStyle(
-                      fontSize: 22, 
-                      fontWeight: FontWeight.bold, 
-                      color: overUnder < 0 ? Colors.red : (overUnder == 0 ? Colors.black87 : Colors.blue)
+                  Expanded(
+                    child: Text(
+                      widget.round.golfCourseName,
+                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  InkWell(
-                    onTap: () => _showQPointBreakdown(context, round, playerIndex, playerName),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          '$totalPutt putt, ',
-                          style: const TextStyle(fontSize: 16, color: Colors.blueGrey, fontWeight: FontWeight.w500),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        '$totalGross($overUnderStr)',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: overUnder < 0 ? Colors.red : (overUnder == 0 ? Colors.black87 : Colors.blue),
                         ),
-                        Text(
-                          'Q ${qPointBreakdown.total}pt',
-                          style: const TextStyle(fontSize: 16, color: Color(0xFFD4AF37), fontWeight: FontWeight.bold),
+                      ),
+                      InkWell(
+                        onTap: () => _showQPointBreakdown(context, widget.round, playerIndex, playerName),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              '$totalPutt putt, ',
+                              style: const TextStyle(fontSize: 16, color: Colors.blueGrey, fontWeight: FontWeight.w500),
+                            ),
+                            Text(
+                              'Q ${qPointBreakdown.total}pt',
+                              style: const TextStyle(fontSize: 16, color: Color(0xFFD4AF37), fontWeight: FontWeight.bold),
+                            ),
+                            const Icon(Icons.info_outline, size: 14, color: Color(0xFFD4AF37)),
+                          ],
                         ),
-                        const Icon(Icons.info_outline, size: 14, color: Color(0xFFD4AF37)),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            '${DateFormat('yyyy-MM-dd').format(round.date)} ${round.teeUpTime} | $playerName',
-            style: const TextStyle(color: Colors.grey, fontSize: 14),
-          ),
-          const SizedBox(height: 24),
-          
-          _buildScorecardGrid(round.holes, 0, context, playerIndex),
-          const SizedBox(height: 32),
-          _buildScorecardGrid(round.holes, 9, context, playerIndex),
-          const SizedBox(height: 16),
-          _buildScoreLegend(),
-          const SizedBox(height: 16),
-          
-          // 18홀이 모두 입력된 경우에만 통계 제공
-          round.holes.where((h) => h.score != -99).length == 18
-            ? Card(
-                elevation: 1,
-                color: Colors.grey.shade50,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('라운드 통계', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
-                      const SizedBox(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+              const SizedBox(height: 8),
+              Text(
+                '${DateFormat('yyyy-MM-dd').format(widget.round.date)} ${widget.round.teeUpTime} | $playerName',
+                style: const TextStyle(color: Colors.grey, fontSize: 14),
+              ),
+              const SizedBox(height: 24),
+
+              // 전반 스코어카드 제목
+              _buildCourseLabel(widget.round.frontCourseName.isNotEmpty ? widget.round.frontCourseName : '전반 코스'),
+              const SizedBox(height: 8),
+              _buildScorecardGrid(widget.round.holes, 0, context, playerIndex),
+              const SizedBox(height: 24),
+
+              // 후반 스코어카드 제목
+              _buildCourseLabel(widget.round.backCourseName.isNotEmpty ? widget.round.backCourseName : '후반 코스'),
+              const SizedBox(height: 8),
+              _buildScorecardGrid(widget.round.holes, 9, context, playerIndex),
+              const SizedBox(height: 16),
+              _buildScoreLegend(),
+              const SizedBox(height: 16),
+
+              // 18홀이 모두 입력된 경우에만 통계 제공
+              widget.round.holes.where((h) => h.score != -99).length == 18
+                ? Card(
+                    elevation: 1,
+                    color: Colors.grey.shade50,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _statItem('Gross', '$totalGross'),
-                          _statItem('To Par', overUnderStr, color: overUnder < 0 ? Colors.red : (overUnder == 0 ? Colors.black87 : Colors.blue)),
-                          _statItem('Putts', '$totalPutt'),
-                          _statItem('Q-Point', '${qPointBreakdown.total}', color: const Color(0xFFD4AF37)),
+                          const Text('라운드 통계', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
+                          const SizedBox(height: 16),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: [
+                              _statItem('Gross', '$totalGross'),
+                              _statItem('To Par', overUnderStr, color: overUnder < 0 ? Colors.red : (overUnder == 0 ? Colors.black87 : Colors.blue)),
+                              _statItem('Putts', '$totalPutt'),
+                              _statItem('Q-Point', '${qPointBreakdown.total}', color: const Color(0xFFD4AF37)),
+                            ],
+                          ),
                         ],
                       ),
-                    ],
-                  ),
-                ),
-              )
-            : Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 24.0),
-                  child: Column(
-                    children: [
-                      Icon(Icons.info_outline, color: Colors.orange.shade300, size: 32),
-                      const SizedBox(height: 8),
-                      const Text(
-                        '18홀 기록이 모두 입력되어야 통계가 제공됩니다.',
-                        style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold),
+                    ),
+                  )
+                : Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 24.0),
+                      child: Column(
+                        children: [
+                          Icon(Icons.info_outline, color: Colors.orange.shade300, size: 32),
+                          const SizedBox(height: 8),
+                          const Text(
+                            '18홀 기록이 모두 입력되어야 통계가 제공됩니다.',
+                            style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
+
+              // 하단 워터마크
+              const SizedBox(height: 24),
+              Center(
+                child: Text(
+                  'FIAT GOLF  •  ${DateFormat('yyyy-MM-dd').format(widget.round.date)}',
+                  style: TextStyle(fontSize: 11, color: Colors.grey.shade400, letterSpacing: 1.5),
                 ),
               ),
-        ],
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCourseLabel(String label) {
+    return Text(
+      label,
+      style: const TextStyle(
+        fontSize: 14,
+        fontWeight: FontWeight.bold,
+        color: Colors.blueGrey,
+        letterSpacing: 0.5,
       ),
     );
   }
@@ -202,14 +294,14 @@ class ScorecardScreen extends StatelessWidget {
   }
 
   Widget _buildScorecardGrid(List<HoleData> holes, int startIndex, BuildContext context, int playerIndex) {
-    if (holes.length < startIndex + 9) return const SizedBox(); 
+    if (holes.length < startIndex + 9) return const SizedBox();
 
     final subHoles = holes.sublist(startIndex, startIndex + 9);
     final totalPar = subHoles.fold(0, (sum, h) => sum + h.par);
-    
+
     int totalScore = 0;
     int totalPutt = 0;
-    
+
     for (var h in subHoles) {
       if (playerIndex == 0) {
         totalScore += (h.score == -99 ? 0 : h.score);
@@ -248,7 +340,7 @@ class ScorecardScreen extends StatelessWidget {
           children: [
             _buildCell('SCORE', isHeader: true),
             for (var h in subHoles) _buildScoreCell(h, playerIndex),
-            _buildScoreCell(null, playerIndex, customScore: totalScore, isBold: true),
+            _buildScoreCell(null, playerIndex, customScore: totalScore, isBold: true, isTotal: true, totalPar: totalPar),
           ],
         ),
         TableRow(
@@ -289,28 +381,35 @@ class ScorecardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildScoreCell(HoleData? h, int playerIndex, {int? customScore, bool isBold = false}) {
+  Widget _buildScoreCell(HoleData? h, int playerIndex, {int? customScore, bool isBold = false, bool isTotal = false, int? totalPar}) {
     int score = customScore ?? (h != null ? _getPlayerScore(h, playerIndex) : 0);
     String text = score == 0 ? '0' : (score > 0 ? '+$score' : '$score');
     
-    Color textColor = Colors.black87;
-    Color bgColor = Colors.transparent;
-    
-    if (score <= -2) {
-      bgColor = Colors.red;
-      textColor = Colors.white;
-    } else if (score == -1) {
-      bgColor = Colors.red.shade200;
-      textColor = Colors.black87;
-    } else if (score == 1) {
-      bgColor = Colors.cyan.shade200;
-      textColor = Colors.black87;
-    } else if (score >= 2) {
-      bgColor = Colors.blue;
-      textColor = Colors.white;
+    if (isTotal && totalPar != null) {
+      text = '${totalPar + score}';
     }
 
-    // 니어리스트 표시 (파3에서만)
+    Color textColor = Colors.black87;
+    Color bgColor = Colors.transparent;
+
+    if (isTotal) {
+      bgColor = Colors.transparent;
+    } else {
+      if (score <= -2) {
+        bgColor = Colors.red;
+        textColor = Colors.white;
+      } else if (score == -1) {
+        bgColor = Colors.red.shade200;
+        textColor = Colors.black87;
+      } else if (score == 1) {
+        bgColor = Colors.cyan.shade200;
+        textColor = Colors.black87;
+      } else if (score >= 2) {
+        bgColor = Colors.blue;
+        textColor = Colors.white;
+      }
+    }
+
     Widget? nearestMarker;
     if (h != null && h.par == 3 && h.nearestPlayerIndex == playerIndex) {
       if (score <= 0) {
@@ -381,7 +480,7 @@ class ScorecardScreen extends StatelessWidget {
             width: 12,
             height: 12,
             decoration: BoxDecoration(
-              color: color, 
+              color: color,
               shape: BoxShape.circle,
               border: hasBorder ? Border.all(color: Colors.grey.shade400) : null,
             ),
@@ -393,4 +492,3 @@ class ScorecardScreen extends StatelessWidget {
     );
   }
 }
-

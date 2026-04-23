@@ -4,6 +4,7 @@ import '../services/auth_service.dart';
 import 'package:intl/intl.dart';
 
 import '../models/round_model.dart';
+import '../services/download_service.dart';
 import '../widgets/q_point_breakdown_dialog.dart';
 import 'edit_round_screen.dart';
 import 'course_list_screen.dart';
@@ -95,7 +96,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('나의 골프 기록 (v1.4.9)'),
+        title: const Text('나의 골프 기록 (v1.5.8)'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         leading: IconButton(
           icon: const Icon(Icons.logout, size: 20),
@@ -160,153 +161,160 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
           final docs = snapshot.data!.docs;
           
-          return ListView.builder(
-            itemCount: docs.length,
-            itemBuilder: (context, index) {
-              final round = RoundData.fromMap(
-                docs[index].id,
-                docs[index].data() as Map<String, dynamic>,
-              );
+          return RefreshIndicator(
+            onRefresh: () async {
+              DownloadService.forceWebReload();
+              await Future.delayed(const Duration(seconds: 1)); // UI feedback before reload
+            },
+            child: ListView.builder(
+              physics: const AlwaysScrollableScrollPhysics(),
+              itemCount: docs.length,
+              itemBuilder: (context, index) {
+                final round = RoundData.fromMap(
+                  docs[index].id,
+                  docs[index].data() as Map<String, dynamic>,
+                );
 
-              final enteredHoles = round.holes.where((h) => h.score != -99).toList();
-              int totalPar = enteredHoles.fold(0, (total, h) => total + h.par);
-              int totalPutt = enteredHoles.fold(0, (total, h) => total + h.putt);
-              int overUnder = round.totalScore; 
-              int grossScore = totalPar + overUnder; 
-              bool isIncomplete = enteredHoles.length < 18;
+                final enteredHoles = round.holes.where((h) => h.score != -99).toList();
+                int totalPar = enteredHoles.fold(0, (total, h) => total + h.par);
+                int totalPutt = enteredHoles.fold(0, (total, h) => total + h.putt);
+                int overUnder = round.totalScore; 
+                int grossScore = totalPar + overUnder; 
+                bool isIncomplete = enteredHoles.length < 18;
 
-              String overUnderStr;
-              if (overUnder > 0) {
-                overUnderStr = '+$overUnder';
-              } else if (overUnder < 0) {
-                overUnderStr = '$overUnder';
-              } else {
-                overUnderStr = 'E';
-              }
+                String overUnderStr;
+                if (overUnder > 0) {
+                  overUnderStr = '+$overUnder';
+                } else if (overUnder < 0) {
+                  overUnderStr = '$overUnder';
+                } else {
+                  overUnderStr = 'E';
+                }
 
-              String courseNames = '';
-              if (round.frontCourseName.isNotEmpty && round.backCourseName.isNotEmpty) {
-                courseNames = '${round.frontCourseName} / ${round.backCourseName}';
-              } else if (round.frontCourseName.isNotEmpty) {
-                courseNames = round.frontCourseName;
-              } else if (round.backCourseName.isNotEmpty) {
-                courseNames = round.backCourseName;
-              }
+                String courseNames = '';
+                if (round.frontCourseName.isNotEmpty && round.backCourseName.isNotEmpty) {
+                  courseNames = '${round.frontCourseName} / ${round.backCourseName}';
+                } else if (round.frontCourseName.isNotEmpty) {
+                  courseNames = round.frontCourseName;
+                } else if (round.backCourseName.isNotEmpty) {
+                  courseNames = round.backCourseName;
+                }
 
-              return Card(
-                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                elevation: 2,
-                child: ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  title: Row(
-                    crossAxisAlignment: CrossAxisAlignment.baseline,
-                    textBaseline: TextBaseline.alphabetic,
-                    children: [
-                      Text(
-                        round.golfCourseName,
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-                      ),
-                      if (courseNames.isNotEmpty) ...[
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            courseNames,
-                            style: const TextStyle(fontSize: 14, color: Colors.grey),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                  subtitle: Padding(
-                    padding: const EdgeInsets.only(top: 4.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Text(
-                              '${DateFormat('yyyy-MM-dd').format(round.date)}  ${round.teeUpTime}',
-                              style: const TextStyle(fontSize: 13, color: Color(0xFF667C7A)),
-                            ),
-                            if (isIncomplete) ...[
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                                decoration: BoxDecoration(
-                                  color: Colors.orange.shade50,
-                                  borderRadius: BorderRadius.circular(4),
-                                  border: Border.all(color: Colors.orange.shade200),
-                                ),
-                                child: Text(
-                                  '${enteredHoles.length}홀 기록됨',
-                                  style: TextStyle(fontSize: 11, color: Colors.orange.shade700, fontWeight: FontWeight.bold),
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                        if (round.companions.isNotEmpty)
-                          Text(
-                            'With: ${round.companions.join(', ')}',
-                            style: const TextStyle(fontSize: 13, color: Colors.grey),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                      ],
-                    ),
-                  ),
-                  titleAlignment: ListTileTitleAlignment.titleHeight,
-                  trailing: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: isIncomplete ? Colors.grey.shade50 : const Color(0xFF27AE60).withOpacity(0.05),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
+                return Card(
+                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  elevation: 2,
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    title: Row(
+                      crossAxisAlignment: CrossAxisAlignment.baseline,
+                      textBaseline: TextBaseline.alphabetic,
                       children: [
                         Text(
-                          '$grossScore($overUnderStr), $totalPutt putt',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                            color: isIncomplete ? Colors.grey : (overUnder < 0 ? Colors.red : (overUnder == 0 ? Colors.black87 : Colors.blue)),
-                          ),
+                          round.golfCourseName,
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
                         ),
-                        const SizedBox(height: 4),
-                        GestureDetector(
-                          onTap: () => _showQPointBreakdown(context, round),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: isIncomplete ? Colors.grey.shade200 : const Color(0xFFD4AF37).withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
+                        if (courseNames.isNotEmpty) ...[
+                          const SizedBox(width: 8),
+                          Expanded(
                             child: Text(
-                              'Q-Point: ${round.qPoint}',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,
-                                color: isIncomplete ? Colors.grey : const Color(0xFF997D21),
+                              courseNames,
+                              style: const TextStyle(fontSize: 14, color: Colors.grey),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    subtitle: Padding(
+                      padding: const EdgeInsets.only(top: 4.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                '${DateFormat('yyyy-MM-dd').format(round.date)}  ${round.teeUpTime}',
+                                style: const TextStyle(fontSize: 13, color: Color(0xFF667C7A)),
+                              ),
+                              if (isIncomplete) ...[
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                  decoration: BoxDecoration(
+                                    color: Colors.orange.shade50,
+                                    borderRadius: BorderRadius.circular(4),
+                                    border: Border.all(color: Colors.orange.shade200),
+                                  ),
+                                  child: Text(
+                                    '${enteredHoles.length}홀 기록됨',
+                                    style: TextStyle(fontSize: 11, color: Colors.orange.shade700, fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                          if (round.companions.isNotEmpty)
+                            Text(
+                              'With: ${round.companions.join(', ')}',
+                              style: const TextStyle(fontSize: 13, color: Colors.grey),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                        ],
+                      ),
+                    ),
+                    titleAlignment: ListTileTitleAlignment.titleHeight,
+                    trailing: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: isIncomplete ? Colors.grey.shade50 : const Color(0xFF27AE60).withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            '$grossScore($overUnderStr), $totalPutt putt',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                              color: isIncomplete ? Colors.grey : (overUnder < 0 ? Colors.red : (overUnder == 0 ? Colors.black87 : Colors.blue)),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          GestureDetector(
+                            onTap: () => _showQPointBreakdown(context, round),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: isIncomplete ? Colors.grey.shade200 : const Color(0xFFD4AF37).withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                'Q-Point: ${round.qPoint}',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                  color: isIncomplete ? Colors.grey : const Color(0xFF997D21),
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => EditRoundScreen(round: round),
+                        ],
                       ),
-                    );
-                  },
-                ),
-              );
-            },
+                    ),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => EditRoundScreen(round: round),
+                        ),
+                      );
+                    },
+                  ),
+                );
+              },
+            ),
           );
         },
       ),
@@ -314,7 +322,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         height: 30,
         alignment: Alignment.center,
         child: Text(
-          'App Version v1.4.9',
+          'App Version v1.5.8',
           style: TextStyle(fontSize: 10, color: Colors.grey.withOpacity(0.5)),
         ),
       ),

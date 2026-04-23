@@ -21,7 +21,7 @@
   <link rel="icon" type="image/png" href="favicon.png"/>
 
   <title>FIAT GOLF</title>
-  <link rel="manifest" href="manifest.json">
+  <link rel="manifest" href="manifest.json?v=20260424009">
 
   <style>
     body {
@@ -66,22 +66,49 @@
 </head>
 <body>
   <script>
+    // ==========================================================
+    // 강제 캐시 무효화 — 배포마다 BUILD_TS 값을 반드시 바꾸세요.
+    // ==========================================================
+    var BUILD_TS = '20260424009';   // ← 배포할 때마다 이 값을 변경 (YYYYMMDD + 빌드번호)
+    var TS_KEY   = 'fiat_golf_build_ts';
+
+    // Service Worker 전부 즉시 해제
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then(function(registrations) {
-        for(let registration of registrations) { registration.unregister(); }
+      navigator.serviceWorker.getRegistrations().then(function(regs) {
+        regs.forEach(function(r) { r.unregister(); });
       });
     }
-    if ('caches' in window) {
-      caches.keys().then(function(names) {
-        for (let name of names) { caches.delete(name); console.log("Cache cleared: " + name); }
-      });
+
+    var savedTs = localStorage.getItem(TS_KEY);
+
+    if (savedTs !== BUILD_TS) {
+      // 새 빌드 감지 → 모든 캐시 삭제 후 새로고침
+      console.log('[FIAT GOLF] New build detected (' + savedTs + ' → ' + BUILD_TS + '). Clearing cache...');
+      if ('caches' in window) {
+        caches.keys().then(function(names) {
+          return Promise.all(names.map(function(n) { return caches.delete(n); }));
+        }).then(function() {
+          localStorage.setItem(TS_KEY, BUILD_TS);
+          // location.replace 로 히스토리 쌓지 않고 교체 (무한루프 방지)
+          window.location.replace(window.location.href.split('?')[0] + '?_cb=' + BUILD_TS);
+        });
+      } else {
+        localStorage.setItem(TS_KEY, BUILD_TS);
+        window.location.replace(window.location.href.split('?')[0] + '?_cb=' + BUILD_TS);
+      }
     }
   </script>
+
   <div class="loading-container">
     <img src="favicon.png" alt="Logo" class="loading-logo">
     <div class="spinner"></div>
     <p style="color: #27AE60; font-weight: 500; margin-top: 16px; letter-spacing: 1px;">FIAT GOLF 로딩 중...</p>
   </div>
-  <script src="flutter_bootstrap.js?v=04052210" async></script>
+
+  <!--
+    flutter_bootstrap.js 뒤의 ?v= 쿼리스트링도 BUILD_TS 와 맞춰주세요.
+    캐시된 index.html 이 있더라도 이 URL이 다르면 브라우저가 새 파일을 받습니다.
+  -->
+  <script src="flutter_bootstrap.js?v=20260424009" async></script>
 </body>
 </html>

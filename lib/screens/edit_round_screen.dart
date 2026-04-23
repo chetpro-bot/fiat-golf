@@ -4,8 +4,8 @@ import 'package:intl/intl.dart';
 import '../models/round_model.dart';
 import '../services/auth_service.dart';
 import '../services/betting_service.dart';
+import '../services/download_service.dart';
 import '../widgets/q_point_breakdown_dialog.dart';
-import 'round_result_screen.dart';
 
 class EditRoundScreen extends StatefulWidget {
   final RoundData? round; // null이면 신규 생성, 값이 있으면 수정 모드
@@ -34,6 +34,8 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
   bool _isSaving = false;
   late OjangConfig _ojangConfig;
   int _selectedScorecardPlayerIndex = 0;
+  final GlobalKey _scorecardRepaintKey = GlobalKey();
+  bool _isDownloadingScorecard = false;
   
   // Autocomplete 내부 컨트롤러에 접근하기 위한 참조 변수
   TextEditingController? _internalGolfCourseCtrl;
@@ -499,7 +501,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.round != null ? '기록 수정 (v1.4.9)' : '기록 추가 (v1.4.9)'),
+        title: Text(widget.round != null ? '기록 수정 (v1.5.8)' : '기록 추가 (v1.5.8)'),
         actions: [
           if (widget.round != null)
             IconButton(
@@ -871,48 +873,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    if (_holes.every((h) => h.score != -99)) ...[
-                      SizedBox(
-                        width: double.infinity,
-                        child: OutlinedButton.icon(
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            side: const BorderSide(color: Color(0xFF27AE60)),
-                            foregroundColor: const Color(0xFF27AE60),
-                          ),
-                          onPressed: () {
-                            final List<String> companionsList = _companionsCtrl.text
-                                .split(',')
-                                .map((e) => e.trim())
-                                .where((e) => e.isNotEmpty)
-                                .toList();
 
-                            final currentRound = RoundData(
-                              id: _currentDocId,
-                              date: _selectedDate,
-                              teeUpTime: '${_selectedTime.hour.toString().padLeft(2, '0')}:${_selectedTime.minute.toString().padLeft(2, '0')}',
-                              golfCourseName: _internalGolfCourseCtrl?.text.trim() ?? _golfCourseCtrl.text.trim(),
-                              frontCourseName: _internalFrontCourseCtrl?.text.trim() ?? _frontCourseCtrl.text.trim(),
-                              backCourseName: _internalBackCourseCtrl?.text.trim() ?? _backCourseCtrl.text.trim(),
-                              companions: companionsList,
-                              totalScore: _overUnder,
-                              holes: _holes,
-                              createdAt: widget.round?.createdAt ?? DateTime.now(),
-                              userName: AuthService().currentUser?.displayName,
-                              ojangConfig: _ojangConfig,
-                            );
-
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (context) => RoundResultScreen(round: currentRound)),
-                            );
-                          },
-                          icon: const Icon(Icons.description_outlined),
-                          label: const Text('결과 리포트 보기', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                    ],
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
@@ -1449,7 +1410,12 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
     
     // Ensure index is within bounds
     if (_selectedScorecardPlayerIndex >= players.length) {
-      _selectedScorecardPlayerIndex = 0;
+      _selectedScorecardPlayerIndex = players.length - 1;
+    }
+    
+    // 동반자가 없으면 '전체' 탭을 스킵하고 무조건 '나'를 보여주도록 강제
+    if (compNames.isEmpty && _selectedScorecardPlayerIndex == 0) {
+      _selectedScorecardPlayerIndex = 1;
     }
 
     return SingleChildScrollView(
@@ -1457,11 +1423,130 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 선수 선택 칩
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 16.0),
-            child: Row(
-              children: players.asMap().entries.map((e) {
+          // 다운로드 버튼 영역
+          Builder(
+                builder: (context) {
+                  // 18홀 모두 입력되었는지 확인 (score가 -99가 아닌지)
+                  final bool isAllHolesEntered = _holes.every((h) => h.score != -99);
+                  
+                  return Padding(
+                    padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 16.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        if (isAllHolesEntered && _selectedScorecardPlayerIndex == 0) ...[
+                          // 전체 탭 & 18홀 완료 시 -> 일괄 다운로드 버튼
+                          ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF27AE60),
+                              foregroundColor: Colors.white,
+                              elevation: 2,
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                            ),
+                            onPressed: _isDownloadingScorecard ? null : () async {
+                              setState(() => _isDownloadingScorecard = true);
+                              
+                              try {
+                                // 전체 탭부터 개인 탭까지 순차적으로 렌더링 후 다운로드
+                                for (int i = 0; i < players.length; i++) {
+                                  setState(() {
+                                    _selectedScorecardPlayerIndex = i;
+                                  });
+                                  // 화면 렌더링 대기
+                                  await Future.delayed(const Duration(milliseconds: 400));
+                                  
+                                  final playerName = players[i];
+                                  final dateStr = DateFormat('yyyyMMdd').format(_selectedDate);
+                                  final filename = '스코어카드_${_golfCourseCtrl.text.trim()}_${playerName}_$dateStr.png';
+                                  
+                                  await DownloadService.captureAndDownload(
+                                    repaintKey: _scorecardRepaintKey,
+                                    filename: filename,
+                                    pixelRatio: 2.5,
+                                    context: context,
+                                  );
+                                  
+                                  // 브라우저 다중 다운로드 차단 방지를 위한 약간의 대기 시간
+                                  await Future.delayed(const Duration(milliseconds: 400));
+                                }
+                                
+                                // 다시 전체 탭으로 복귀
+                                if (mounted) {
+                                  setState(() {
+                                    _selectedScorecardPlayerIndex = 0;
+                                  });
+                                }
+                                
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('모든 스코어카드 다운로드가 시작되었습니다.\n(브라우저의 다중 다운로드 허용이 필요할 수 있습니다)')),
+                                );
+                              } finally {
+                                if (mounted) setState(() => _isDownloadingScorecard = false);
+                              }
+                            },
+                            icon: _isDownloadingScorecard 
+                                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                                : const Icon(Icons.download_for_offline, size: 18),
+                            label: Text('전체 일괄 저장 (${players.length}장)', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                          ),
+                        ] else if (_selectedScorecardPlayerIndex > 0) ...[
+                          // 개인 탭 선택 시 -> 단일 다운로드 버튼
+                          ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              foregroundColor: const Color(0xFF27AE60),
+                              elevation: 1,
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
+                                side: const BorderSide(color: Color(0xFF27AE60), width: 1),
+                              ),
+                            ),
+                            onPressed: _isDownloadingScorecard ? null : () async {
+                              setState(() => _isDownloadingScorecard = true);
+                              final playerName = players[_selectedScorecardPlayerIndex];
+                              final dateStr = DateFormat('yyyyMMdd').format(_selectedDate);
+                              final filename = '스코어카드_${_golfCourseCtrl.text.trim()}_${playerName}_$dateStr.png';
+                              
+                              await DownloadService.captureAndDownload(
+                                repaintKey: _scorecardRepaintKey,
+                                filename: filename,
+                                pixelRatio: 2.5,
+                                context: context,
+                              );
+                              if (mounted) setState(() => _isDownloadingScorecard = false);
+                            },
+                            icon: _isDownloadingScorecard 
+                                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                                : const Icon(Icons.download, size: 18),
+                            label: const Text('현재 화면 저장', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                          ),
+                        ],
+                      ],
+                    ),
+                  );
+                }
+              ),
+              // 여기서부터 캡처
+              RepaintBoundary(
+                key: _scorecardRepaintKey,
+                child: Container(
+                  color: Theme.of(context).scaffoldBackgroundColor,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // 선수 선택 칩
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 16.0),
+                    child: Row(
+                      children: players.asMap().entries.where((e) {
+                // 동반자가 없으면 '전체' 탭 숨김
+                if (compNames.isEmpty && e.key == 0) return false;
+                return true;
+              }).map((e) {
                 final idx = e.key;
                 final name = e.value;
                 final isSelected = _selectedScorecardPlayerIndex == idx;
@@ -1471,6 +1556,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
                     child: ChoiceChip(
                       label: Center(child: Text(name, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13))),
                       selected: isSelected,
+                      showCheckmark: false,
                       onSelected: (bool selected) {
                         if (selected) {
                           setState(() {
@@ -1525,6 +1611,10 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
           _buildScoreLegend(),
           _buildPersonalRoundStatistics(_holes, _selectedScorecardPlayerIndex),
           const SizedBox(height: 80), // 여백 확보
+                    ],
+                  ),
+                ),
+              ),
         ],
       ),
     );
@@ -1820,7 +1910,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
           children: [
             _buildGridCell('SCORE', isHeader: true),
             for (var h in subHoles) _buildGridScoreCell(h, playerIndex),
-            _buildGridScoreCell(null, playerIndex, customScore: totalScore, isBold: true, isTotal: true),
+            _buildGridScoreCell(null, playerIndex, customScore: totalScore, isBold: true, isTotal: true, totalPar: totalPar),
           ],
         ),
         TableRow(
@@ -1910,10 +2000,14 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
     );
   }
 
-  Widget _buildGridScoreCell(HoleData? h, int playerIndex, {int? customScore, bool isBold = false, bool isTotal = false}) {
+  Widget _buildGridScoreCell(HoleData? h, int playerIndex, {int? customScore, bool isBold = false, bool isTotal = false, int? totalPar}) {
     int score = customScore ?? (h != null ? _getPlayerScore(h, playerIndex) : 0);
     String text = score == 0 ? '0' : (score > 0 ? '+$score' : '$score');
     
+    if (isTotal && totalPar != null) {
+      text = '${totalPar + score}';
+    }
+
     Color textColor = Colors.black87;
     Color bgColor = Colors.transparent;
     
@@ -2039,7 +2133,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
     final List<String> allNames = [AuthService().currentUser?.displayName ?? '나', ...compNames];
     
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
         color: const Color(0xFFF0F4F8), // 부드러운 블루 그레이 바탕
         boxShadow: [
@@ -2128,13 +2222,6 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
                   ),
                 );
               }),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Center(
-            child: Text(
-              'App Version: 1.4.9+30',
-              style: TextStyle(fontSize: 10, color: Colors.grey.withOpacity(0.5)),
             ),
           ),
         ],
