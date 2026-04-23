@@ -8,6 +8,8 @@ class OjangConfig {
   bool baepanTripleP45; // 파4,5 트리플 이상 배판
   bool baepanDoubleP3; // 파3 더블 이상 배판
   int nearestRule; // 0:안함, 1:기본, 2:지우기/실패포함
+  int ruleType; // 0: 오장 후핸디, 1: 오목회
+  List<String> expertPlayers; // 고수 패널티 대상자 목록
 
   OjangConfig({
     this.enabled = false,
@@ -17,6 +19,8 @@ class OjangConfig {
     this.baepanTripleP45 = true,
     this.baepanDoubleP3 = true,
     this.nearestRule = 2,
+    this.ruleType = 0,
+    this.expertPlayers = const [],
   });
 
   Map<String, dynamic> toMap() {
@@ -28,6 +32,8 @@ class OjangConfig {
       'baepanTripleP45': baepanTripleP45,
       'baepanDoubleP3': baepanDoubleP3,
       'nearestRule': nearestRule,
+      'ruleType': ruleType,
+      'expertPlayers': expertPlayers,
     };
   }
 
@@ -40,6 +46,8 @@ class OjangConfig {
       baepanTripleP45: map['baepanTripleP45'] ?? true,
       baepanDoubleP3: map['baepanDoubleP3'] ?? true,
       nearestRule: map['nearestRule'] ?? 2,
+      ruleType: map['ruleType'] ?? 0,
+      expertPlayers: List<String>.from(map['expertPlayers'] ?? []),
     );
   }
 }
@@ -58,7 +66,13 @@ class HoleData {
   // companions 리스트 순서와 매칭: companions[0]의 데이터는 인덱스 0에 저장
   List<int> companionScores;
   List<int> companionPutts;
-  List<int> companionPenalties;
+  List<int> companionPenalties; // 총 벌타 (기존 호환성 유지용 또는 합계용)
+  
+  // 동반자 벌타 상세
+  List<int> companionTeeOb;
+  List<int> companionTeeHazard;
+  List<int> companionSecondOb;
+  List<int> companionSecondHazard;
   
   // 내기 이벤트
   int nearestPlayerIndex; // -1:없음, 0:유저, 1~3:동반자
@@ -76,11 +90,19 @@ class HoleData {
     List<int>? companionScores,
     List<int>? companionPutts,
     List<int>? companionPenalties,
+    List<int>? companionTeeOb,
+    List<int>? companionTeeHazard,
+    List<int>? companionSecondOb,
+    List<int>? companionSecondHazard,
     this.nearestPlayerIndex = -1,
     this.nearestErasePlayerIndex = -1,
   }) : companionScores = companionScores ?? List.filled(3, -99),
        companionPutts = companionPutts ?? List.filled(3, -99),
-       companionPenalties = companionPenalties ?? List.filled(3, 0);
+       companionPenalties = companionPenalties ?? List.filled(3, 0),
+       companionTeeOb = companionTeeOb ?? List.filled(3, 0),
+       companionTeeHazard = companionTeeHazard ?? List.filled(3, 0),
+       companionSecondOb = companionSecondOb ?? List.filled(3, 0),
+       companionSecondHazard = companionSecondHazard ?? List.filled(3, 0);
 
   Map<String, dynamic> toMap() {
     return {
@@ -95,6 +117,10 @@ class HoleData {
       'companionScores': companionScores,
       'companionPutts': companionPutts,
       'companionPenalties': companionPenalties,
+      'companionTeeOb': companionTeeOb,
+      'companionTeeHazard': companionTeeHazard,
+      'companionSecondOb': companionSecondOb,
+      'companionSecondHazard': companionSecondHazard,
       'nearestPlayerIndex': nearestPlayerIndex,
       'nearestErasePlayerIndex': nearestErasePlayerIndex,
     };
@@ -113,13 +139,28 @@ class HoleData {
       companionScores: List<int>.from(map['companionScores'] ?? List.filled(3, -99)),
       companionPutts: List<int>.from(map['companionPutts'] ?? List.filled(3, -99)),
       companionPenalties: List<int>.from(map['companionPenalties'] ?? List.filled(3, 0)),
+      companionTeeOb: List<int>.from(map['companionTeeOb'] ?? List.filled(3, 0)),
+      companionTeeHazard: List<int>.from(map['companionTeeHazard'] ?? List.filled(3, 0)),
+      companionSecondOb: List<int>.from(map['companionSecondOb'] ?? List.filled(3, 0)),
+      companionSecondHazard: List<int>.from(map['companionSecondHazard'] ?? List.filled(3, 0)),
       nearestPlayerIndex: map['nearestPlayerIndex'] ?? -1,
       nearestErasePlayerIndex: map['nearestErasePlayerIndex'] ?? -1,
     );
   }
 
   int get penaltyStrokes => (teeOb * 2) + (secondOb * 2) + teeHazard + secondHazard;
+
+  int getPlayerPenaltyStrokes(int playerIndex) {
+    if (playerIndex == 0) return penaltyStrokes;
+    int cIdx = playerIndex - 1;
+    if (cIdx < 0 || cIdx >= 3) return 0;
+    
+    return (companionTeeOb[cIdx] * 2) + (companionSecondOb[cIdx] * 2) + 
+           companionTeeHazard[cIdx] + companionSecondHazard[cIdx];
+  }
+
   int get qPoint => getPlayerQPoint(0);
+
 
   int getPlayerQPoint(int playerIndex) {
     int s, p;
@@ -316,13 +357,12 @@ class RoundData {
       if (playerIndex == 0) {
         s = hole.score;
         p = hole.putt;
-        pen = hole.penaltyStrokes;
       } else {
         int cIdx = playerIndex - 1;
         s = (hole.companionScores.length > cIdx) ? hole.companionScores[cIdx] : -99;
         p = (hole.companionPutts.length > cIdx) ? hole.companionPutts[cIdx] : -99;
-        pen = (hole.companionPenalties.length > cIdx) ? hole.companionPenalties[cIdx] : 0;
       }
+      pen = hole.getPlayerPenaltyStrokes(playerIndex);
 
       if (s == -99 || p == -99) {
         allHolesEntered = false;

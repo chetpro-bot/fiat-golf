@@ -8,7 +8,7 @@ class BettingResult {
 }
 
 class BettingService {
-  static BettingResult calculateHole(HoleData hole, OjangConfig config, int playerCount) {
+  static BettingResult calculateHole(HoleData hole, OjangConfig config, int playerCount, List<String> playerNames) {
     List<int> scores = [hole.score, ...hole.companionScores.take(playerCount - 1)];
     List<int> netGains = List.filled(playerCount, 0);
     List<List<int>> transactions = List.generate(playerCount, (_) => List.filled(playerCount, 0));
@@ -39,6 +39,8 @@ class BettingService {
       }
     }
 
+    int multiplier = isBaepan ? 2 : 1;
+
     // 2. 모든 쌍(Pair)에 대해 정산
     for (int i = 0; i < playerCount; i++) {
       for (int j = i + 1; j < playerCount; j++) {
@@ -47,47 +49,74 @@ class BettingService {
 
         if (sI == -99 || sJ == -99) continue;
 
-        // i가 j보다 잘했을 때 기준 (i가 돈을 받는 입장)
-        int diff = sJ - sI;
-        int bonus = 0;
-
-        // 버디 보너스 (+1타)
-        if (sI <= -1) bonus += 1;
-        if (sJ <= -1) bonus -= 1;
-
-        // 니어리스트 보너스 (파3 전용)
-        if (hole.par == 3 && hole.nearestPlayerIndex != -1) {
-          // i가 니어 후보인 경우
-          if (hole.nearestPlayerIndex == i) {
-            if (sI <= 0) bonus += 1; // 성공 (파 이하)
-            else bonus -= 1; // 실패 (보기 이상)
-          }
-          // j가 니어 후보인 경우
-          if (hole.nearestPlayerIndex == j) {
-            if (sJ <= 0) bonus -= 1; // 상대방 성공
-            else bonus += 1; // 상대방 실패
-          }
-        }
-
         int finalAmount = 0;
-        if (isBaepan) {
-          // 배판 공식: (타수차이 + 2 * 보너스) * 단가
-          finalAmount = (diff + 2 * bonus) * config.unitPrice;
+
+        if (config.ruleType == 1) {
+          // --- 오목회 룰 ---
+          // i가 j보다 잘했을 때 기준 (i가 돈을 받는 입장)
+          int diff = sJ - sI;
+          int bonus = 0;
+          if (sI == -1) bonus += 1;
+          if (sJ == -1) bonus -= 1;
+
+          int strokeDiff = diff + bonus;
+          finalAmount = strokeDiff * multiplier * config.unitPrice;
+
+          // 니어리스트 (파3 전용)
+          if (hole.par == 3 && hole.nearestPlayerIndex != -1) {
+            if (hole.nearestPlayerIndex == i) {
+              if (sI <= 0) finalAmount += 1 * multiplier * config.unitPrice;
+              else finalAmount -= 1 * multiplier * config.unitPrice;
+            } else if (hole.nearestPlayerIndex == j) {
+              if (sJ <= 0) finalAmount -= 1 * multiplier * config.unitPrice;
+              else finalAmount += 1 * multiplier * config.unitPrice;
+            }
+          }
         } else {
-          // 홑판 공식: (보너스) * 단가 (타수차이는 무시)
-          finalAmount = bonus * config.unitPrice;
+          // --- 오장 후핸디 룰 (기존) ---
+          int bonus = 0;
+          if (sI <= -1) bonus += 1;
+          if (sJ <= -1) bonus -= 1;
+
+          if (hole.par == 3 && hole.nearestPlayerIndex != -1) {
+            if (hole.nearestPlayerIndex == i) {
+              if (sI <= 0) bonus += 1;
+              else bonus -= 1;
+            }
+            if (hole.nearestPlayerIndex == j) {
+              if (sJ <= 0) bonus -= 1;
+              else bonus += 1;
+            }
+          }
+
+          if (isBaepan) {
+            int diff = sJ - sI;
+            finalAmount = (diff + 2 * bonus) * config.unitPrice;
+          } else {
+            finalAmount = bonus * config.unitPrice;
+          }
         }
 
+        // 고수 패널티 적용 (오목회 룰일 때 패배한 사람이 고수면 2배)
         if (finalAmount > 0) {
-          // j가 i에게 준다
+          // i가 이김, j가 돈을 줌 (j 패배)
+          // j가 고수(0: 본인)이거나 지정된 고수일 경우 2배
+          if (config.ruleType == 1 && (j == 0 || config.expertPlayers.contains(playerNames[j]))) {
+            finalAmount *= 2;
+          }
           transactions[j][i] += finalAmount;
           netGains[i] += finalAmount;
           netGains[j] -= finalAmount;
         } else if (finalAmount < 0) {
-          // i가 j에게 준다
-          transactions[i][j] += finalAmount.abs();
-          netGains[j] += finalAmount.abs();
-          netGains[i] -= finalAmount.abs();
+          // j가 이김, i가 돈을 줌 (i 패배)
+          int absAmount = finalAmount.abs();
+          // i가 고수(0: 본인)이거나 지정된 고수일 경우 2배
+          if (config.ruleType == 1 && (i == 0 || config.expertPlayers.contains(playerNames[i]))) {
+            absAmount *= 2;
+          }
+          transactions[i][j] += absAmount;
+          netGains[j] += absAmount;
+          netGains[i] -= absAmount;
         }
       }
     }
@@ -97,13 +126,14 @@ class BettingService {
 
   static List<int> calculateTotal(RoundData round) {
     int playerCount = 1 + round.companions.length;
+    List<String> playerNames = [round.userName ?? '나', ...round.companions];
     List<int> totals = List.filled(playerCount, 0);
 
     if (!round.ojangConfig.enabled) return totals;
 
     for (var hole in round.holes) {
       if (hole.score == -99) continue;
-      var result = calculateHole(hole, round.ojangConfig, playerCount);
+      var result = calculateHole(hole, round.ojangConfig, playerCount, playerNames);
       for (int i = 0; i < playerCount; i++) {
         totals[i] += result.netGains[i];
       }

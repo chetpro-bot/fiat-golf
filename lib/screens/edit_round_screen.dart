@@ -1,10 +1,11 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import '../models/round_model.dart';
 import '../services/auth_service.dart';
 import '../services/betting_service.dart';
 import '../widgets/q_point_breakdown_dialog.dart';
+import 'round_result_screen.dart';
 
 class EditRoundScreen extends StatefulWidget {
   final RoundData? round; // null이면 신규 생성, 값이 있으면 수정 모드
@@ -26,6 +27,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
   final TextEditingController _frontCourseCtrl = TextEditingController();
   final TextEditingController _backCourseCtrl = TextEditingController();
   final TextEditingController _companionsCtrl = TextEditingController(); // 쉼표로 구분입력
+  final TextEditingController _unitPriceCtrl = TextEditingController();
 
   late List<HoleData> _holes;
   int _currentHoleIndex = 0;
@@ -72,6 +74,10 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
           companionScores: List<int>.from(h.companionScores),
           companionPutts: List<int>.from(h.companionPutts),
           companionPenalties: List<int>.from(h.companionPenalties),
+          companionTeeOb: List<int>.from(h.companionTeeOb),
+          companionTeeHazard: List<int>.from(h.companionTeeHazard),
+          companionSecondOb: List<int>.from(h.companionSecondOb),
+          companionSecondHazard: List<int>.from(h.companionSecondHazard),
           nearestPlayerIndex: h.nearestPlayerIndex,
           nearestErasePlayerIndex: h.nearestErasePlayerIndex,
         )
@@ -88,6 +94,9 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
     _ojangConfig = widget.round != null 
         ? OjangConfig.fromMap(widget.round!.ojangConfig.toMap())
         : OjangConfig();
+    
+    // 타당 단가 초기값 세팅 (천단위 콤마 적용)
+    _unitPriceCtrl.text = NumberFormat('#,###').format(_ojangConfig.unitPrice);
   }
 
   Future<void> _loadLatestRoundAndFill() async {
@@ -268,6 +277,10 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
         companionScores: List<int>.from(h.companionScores),
         companionPutts: List<int>.from(h.companionPutts),
         companionPenalties: List.from(h.companionPenalties),
+        companionTeeOb: List<int>.from(h.companionTeeOb),
+        companionTeeHazard: List<int>.from(h.companionTeeHazard),
+        companionSecondOb: List<int>.from(h.companionSecondOb),
+        companionSecondHazard: List<int>.from(h.companionSecondHazard),
         nearestPlayerIndex: h.nearestPlayerIndex,
         nearestErasePlayerIndex: h.nearestErasePlayerIndex,
       )).toList();
@@ -349,6 +362,10 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
 
             // 동반자들 스코어
             for (int i = 0; i < companionsList.length; i++) {
+              // 해당 동반자의 18홀 점수가 모두 입력되었는지 확인 (-99 제외)
+              bool compComplete = savingHoles.every((h) => h.companionScores.length > i && h.companionScores[i] != -99);
+              if (!compComplete) continue;
+
               int compScore = savingHoles.fold(0, (sum, h) => sum + (h.companionScores.length > i ? h.companionScores[i] : 0));
               int compGross = _holes.fold(0, (sum, h) => sum + h.par) + compScore;
               if (compGross < currentRoundBestGross!) {
@@ -363,8 +380,8 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
             // 타입 안정성을 위해 int.tryParse 사용
             int? existingBest = data?['bestScore'] != null ? int.tryParse(data!['bestScore'].toString()) : null;
             
-            // 18홀이 다 입력되었고, 기존 베스트보다 낮거나(더 잘침), 기존 베스트가 없으면 업데이트
-            bool shouldUpdateBest = isCompleteRound && (existingBest == null || currentRoundBestGross! <= existingBest);
+            // 18홀이 다 입력되었고, 기존 베스트보다 낮거나(더 잘침), 기존 베스트가 없거나 비정상적이면 업데이트
+            bool shouldUpdateBest = isCompleteRound && (existingBest == null || existingBest < 40 || currentRoundBestGross! <= existingBest);
 
             Map<String, dynamic> mergedCourses = {};
             try {
@@ -482,7 +499,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.round != null ? '기록 수정 (v1.3.9)' : '기록 추가 (v1.3.9)'),
+        title: Text(widget.round != null ? '기록 수정 (v1.4.7)' : '기록 추가 (v1.4.7)'),
         actions: [
           if (widget.round != null)
             IconButton(
@@ -686,38 +703,75 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
                                 border: Border.all(color: const Color(0xFF27AE60).withOpacity(0.2)),
                               ),
                               child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   SwitchListTile(
+                                    contentPadding: EdgeInsets.zero,
                                     title: const Text('오장마스터 활성화', style: TextStyle(fontWeight: FontWeight.bold)),
-                                    subtitle: const Text('타당 정산 및 실시간 후핸디 반영'),
+                                    subtitle: const Text('타당 정산 및 실시간 핸디 반영'),
                                     value: _ojangConfig.enabled,
                                     onChanged: (v) => setState(() => _ojangConfig.enabled = v),
                                     activeColor: const Color(0xFFD4AF37),
                                   ),
-                                  if (_ojangConfig.enabled)
-                                    Padding(
-                                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                                      child: Row(
-                                        children: [
-                                          const Text('타당 단가:', style: TextStyle(fontWeight: FontWeight.w500)),
-                                          const SizedBox(width: 12),
-                                          Expanded(
-                                            child: TextFormField(
-                                              initialValue: _ojangConfig.unitPrice.toString(),
-                                              keyboardType: TextInputType.number,
-                                              decoration: const InputDecoration(
-                                                suffixText: '원',
-                                                isDense: true,
-                                              ),
-                                              onChanged: (v) {
-                                                final val = int.tryParse(v);
-                                                if (val != null) _ojangConfig.unitPrice = val;
-                                              },
-                                            ),
-                                          ),
-                                        ],
+                                  if (_ojangConfig.enabled) ...[
+                                    const Divider(),
+                                    const Text('내기 룰 선택', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.grey)),
+                                    const SizedBox(height: 8),
+                                    SegmentedButton<int>(
+                                      segments: const [
+                                        ButtonSegment(value: 0, label: Text('오장(후핸디)', style: TextStyle(fontSize: 12))),
+                                        ButtonSegment(value: 1, label: Text('오목회(고수2배)', style: TextStyle(fontSize: 12))),
+                                      ],
+                                      selected: {_ojangConfig.ruleType},
+                                      onSelectionChanged: (Set<int> newSelection) {
+                                        setState(() => _ojangConfig.ruleType = newSelection.first);
+                                      },
+                                      style: SegmentedButton.styleFrom(
+                                        visualDensity: VisualDensity.compact,
+                                        selectedBackgroundColor: const Color(0xFFD4AF37).withOpacity(0.2),
+                                        selectedForegroundColor: const Color(0xFFB8860B),
                                       ),
                                     ),
+                                    const SizedBox(height: 16),
+                                    Row(
+                                      children: [
+                                        const Text('타당 단가:', style: TextStyle(fontWeight: FontWeight.w500, fontSize: 13)),
+                                        const SizedBox(width: 12),
+                                        SizedBox(
+                                          width: 100, // 최대 10,000원에 맞게 너비 제한
+                                          child: TextFormField(
+                                            controller: _unitPriceCtrl,
+                                            keyboardType: TextInputType.number,
+                                            textAlign: TextAlign.right,
+                                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF27AE60)),
+                                            decoration: const InputDecoration(
+                                              suffixText: '원',
+                                              isDense: true,
+                                              contentPadding: EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                                              border: UnderlineInputBorder(),
+                                            ),
+                                            onChanged: (v) {
+                                              // 천단위 콤마 처리
+                                              String raw = v.replaceAll(',', '');
+                                              if (raw.isEmpty) raw = '0';
+                                              int? val = int.tryParse(raw);
+                                              if (val != null) {
+                                                _ojangConfig.unitPrice = val;
+                                                String formatted = NumberFormat('#,###').format(val);
+                                                if (formatted != v) {
+                                                  _unitPriceCtrl.value = TextEditingValue(
+                                                    text: formatted,
+                                                    selection: TextSelection.collapsed(offset: formatted.length),
+                                                  );
+                                                }
+                                              }
+                                              setState(() {}); // 정산 요약 갱신을 위해 호출
+                                            },
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
                                 ],
                               ),
                             ),
@@ -811,19 +865,69 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
                 _buildTotalSettlementSummary(compNames),
               // 하단: 저장 버튼 
               Container(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                 width: double.infinity,
                 color: Colors.white,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    backgroundColor: Theme.of(context).colorScheme.primary,
-                    foregroundColor: Colors.white,
-                  ),
-                  onPressed: _isSaving ? null : _saveRecord,
-                  child: _isSaving
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : Text(widget.round != null ? '기록 수정' : '기록 저장', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_holes.every((h) => h.score != -99)) ...[
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            side: const BorderSide(color: Color(0xFF27AE60)),
+                            foregroundColor: const Color(0xFF27AE60),
+                          ),
+                          onPressed: () {
+                            final List<String> companionsList = _companionsCtrl.text
+                                .split(',')
+                                .map((e) => e.trim())
+                                .where((e) => e.isNotEmpty)
+                                .toList();
+
+                            final currentRound = RoundData(
+                              id: _currentDocId,
+                              date: _selectedDate,
+                              teeUpTime: '${_selectedTime.hour.toString().padLeft(2, '0')}:${_selectedTime.minute.toString().padLeft(2, '0')}',
+                              golfCourseName: _internalGolfCourseCtrl?.text.trim() ?? _golfCourseCtrl.text.trim(),
+                              frontCourseName: _internalFrontCourseCtrl?.text.trim() ?? _frontCourseCtrl.text.trim(),
+                              backCourseName: _internalBackCourseCtrl?.text.trim() ?? _backCourseCtrl.text.trim(),
+                              companions: companionsList,
+                              totalScore: _overUnder,
+                              holes: _holes,
+                              createdAt: widget.round?.createdAt ?? DateTime.now(),
+                              userName: AuthService().currentUser?.displayName,
+                              ojangConfig: _ojangConfig,
+                            );
+
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => RoundResultScreen(round: currentRound)),
+                            );
+                          },
+                          icon: const Icon(Icons.description_outlined),
+                          label: const Text('결과 리포트 보기', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          backgroundColor: Theme.of(context).colorScheme.primary,
+                          foregroundColor: Colors.white,
+                        ),
+                        onPressed: _isSaving ? null : _saveRecord,
+                        child: _isSaving
+                            ? const CircularProgressIndicator(color: Colors.white)
+                            : Text(widget.round != null ? '기록 수정' : '기록 저장', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                  ],
                 ),
               )
             ],
@@ -910,11 +1014,11 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
                 name: AuthService().currentUser?.displayName ?? '나', 
                 score: hole.score, 
                 putt: hole.putt, 
-                penalty: hole.penaltyStrokes,
+                penalty: hole.getPlayerPenaltyStrokes(0),
                 onScoreChanged: (v) => setState(() => hole.score = v),
                 onPuttChanged: (v) => setState(() => hole.putt = v),
-                onPenaltyChanged: (v) => setState(() => hole.teeOb = v),
-                onPenaltyTap: () => _showPenaltyDialog(context, hole),
+                onPenaltyChanged: (v) {}, // Detailed dialog handles this
+                onPenaltyTap: () => _showPenaltyDialog(context, hole, playerIndex: 0),
                 isUser: true
               ),
               // 동반자들
@@ -924,11 +1028,11 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
                     name: compNames[i], 
                     score: hole.companionScores[i],
                     putt: hole.companionPutts[i],
-                    penalty: hole.companionPenalties[i],
+                    penalty: hole.getPlayerPenaltyStrokes(i + 1),
                     onScoreChanged: (v) => setState(() => hole.companionScores[i] = v),
                     onPuttChanged: (v) => setState(() => hole.companionPutts[i] = v),
-                    onPenaltyChanged: (v) => setState(() => hole.companionPenalties[i] = v),
-                    onPenaltyTap: () {},
+                    onPenaltyChanged: (v) {}, // Detailed dialog handles this
+                    onPenaltyTap: () => _showPenaltyDialog(context, hole, playerIndex: i + 1),
                   ),
                 
                 const Divider(),
@@ -975,39 +1079,37 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
           // 벌타
           Expanded(
             flex: 23, 
-            child: isUser 
-              ? Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: InkWell(
-                    onTap: onPenaltyTap,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 6),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFFEBEE),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            penalty == 0 ? '-' : '$penalty',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold, 
-                              fontSize: 16, 
-                              color: penalty > 0 ? Colors.redAccent : Colors.black87
-                            ),
-                          ),
-                          if (penalty > 0)
-                            Text(
-                              '상세',
-                              style: TextStyle(fontSize: 10, color: Colors.grey.shade600, fontWeight: FontWeight.bold),
-                            ),
-                        ],
-                      ),
-                    ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: InkWell(
+                onTap: onPenaltyTap,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFEBEE),
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                )
-              : _buildMiniCounter(penalty, onPenaltyChanged, isPenalty: true),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        penalty == 0 ? '-' : '$penalty',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold, 
+                          fontSize: 16, 
+                          color: penalty > 0 ? Colors.redAccent : Colors.black87
+                        ),
+                      ),
+                      if (penalty > 0)
+                        Text(
+                          '상세',
+                          style: TextStyle(fontSize: 10, color: Colors.grey.shade600, fontWeight: FontWeight.bold),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           ),
         ],
       ),
@@ -1110,7 +1212,8 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
   Widget _buildHoleSettlementChip(HoleData hole, List<String> compNames) {
     if (hole.companionScores.any((s) => s == -99)) return const SizedBox.shrink();
     
-    final result = BettingService.calculateHole(hole, _ojangConfig, 1 + compNames.length);
+    final playerNames = [AuthService().currentUser?.displayName ?? '나', ...compNames];
+    final result = BettingService.calculateHole(hole, _ojangConfig, 1 + compNames.length, playerNames);
     final myGain = result.netGains[0];
     
     return Container(
@@ -1203,7 +1306,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
     );
   }
 
-  void _showPenaltyDialog(BuildContext context, HoleData hole) {
+  void _showPenaltyDialog(BuildContext context, HoleData hole, {int playerIndex = 0}) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -1212,6 +1315,11 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
       builder: (ctx) {
         return StatefulBuilder(
           builder: (ctx, setModalState) {
+            final int teeOb = playerIndex == 0 ? hole.teeOb : hole.companionTeeOb[playerIndex - 1];
+            final int teeHazard = playerIndex == 0 ? hole.teeHazard : hole.companionTeeHazard[playerIndex - 1];
+            final int secondOb = playerIndex == 0 ? hole.secondOb : hole.companionSecondOb[playerIndex - 1];
+            final int secondHazard = playerIndex == 0 ? hole.secondHazard : hole.companionSecondHazard[playerIndex - 1];
+
             return Padding(
               padding: EdgeInsets.only(
                 bottom: MediaQuery.of(ctx).viewInsets.bottom + 32, 
@@ -1228,23 +1336,35 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
                   Text('${hole.holeNumber}번 홀 패널티', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 32),
                   _buildDetailedPenaltyRow('티샷', [
-                    _buildPenaltyItem('O.B', hole.teeOb, (v) {
-                      setState(() => hole.teeOb = v);
+                    _buildPenaltyItem('O.B', teeOb, (v) {
+                      setState(() {
+                        if (playerIndex == 0) hole.teeOb = v;
+                        else hole.companionTeeOb[playerIndex - 1] = v;
+                      });
                       setModalState(() {});
                     }),
-                    _buildPenaltyItem('해저드', hole.teeHazard, (v) {
-                      setState(() => hole.teeHazard = v);
+                    _buildPenaltyItem('해저드', teeHazard, (v) {
+                      setState(() {
+                        if (playerIndex == 0) hole.teeHazard = v;
+                        else hole.companionTeeHazard[playerIndex - 1] = v;
+                      });
                       setModalState(() {});
                     }),
                   ]),
                   const Divider(height: 48),
                   _buildDetailedPenaltyRow('세컨샷', [
-                    _buildPenaltyItem('O.B', hole.secondOb, (v) {
-                      setState(() => hole.secondOb = v);
+                    _buildPenaltyItem('O.B', secondOb, (v) {
+                      setState(() {
+                        if (playerIndex == 0) hole.secondOb = v;
+                        else hole.companionSecondOb[playerIndex - 1] = v;
+                      });
                       setModalState(() {});
                     }),
-                    _buildPenaltyItem('해저드', hole.secondHazard, (v) {
-                      setState(() => hole.secondHazard = v);
+                    _buildPenaltyItem('해저드', secondHazard, (v) {
+                      setState(() {
+                        if (playerIndex == 0) hole.secondHazard = v;
+                        else hole.companionSecondHazard[playerIndex - 1] = v;
+                      });
                       setModalState(() {});
                     }),
                   ]),
@@ -1447,7 +1567,11 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
         int compIdx = playerIndex - 2;
         score = (hole.companionScores.length > compIdx && hole.companionScores[compIdx] != -99) ? hole.companionScores[compIdx] : 0;
         putt = (hole.companionPutts.length > compIdx && hole.companionPutts[compIdx] != -99) ? hole.companionPutts[compIdx] : 0;
-        penalty = hole.companionPenalties.length > compIdx ? hole.companionPenalties[compIdx] : 0;
+        penalty = hole.getPlayerPenaltyStrokes(compIdx + 1);
+        teeObCount += hole.companionTeeOb[compIdx];
+        secondObCount += hole.companionSecondOb[compIdx];
+        teeHazardCount += hole.companionTeeHazard[compIdx];
+        secondHazardCount += hole.companionSecondHazard[compIdx];
       }
       
       totalPutts += putt;
@@ -1533,13 +1657,8 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
                   decoration: BoxDecoration(color: Colors.grey.shade50),
                   children: [
                     _buildStatCell('합계 (벌타)', '$totalPenaltyStrokes'),
-                    if (playerIndex == 1) ...[
-                      _buildStatCell('티샷 벌타', _buildPenaltyValue(teeObCount, teeHazardCount)),
-                      _buildStatCell('세컨샷 벌타', _buildPenaltyValue(secondObCount, secondHazardCount)),
-                    ] else ...[
-                      _buildStatCell('티샷 벌타', '-'),
-                      _buildStatCell('세컨샷 벌타', '-'),
-                    ]
+                    _buildStatCell('티샷 벌타', _buildPenaltyValue(teeObCount, teeHazardCount)),
+                    _buildStatCell('세컨샷 벌타', _buildPenaltyValue(secondObCount, secondHazardCount)),
                   ],
                 ),
               ],
@@ -2014,7 +2133,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
           const SizedBox(height: 8),
           Center(
             child: Text(
-              'App Version v1.3.9',
+              'App Version: 1.4.7+28',
               style: TextStyle(fontSize: 10, color: Colors.grey.withOpacity(0.5)),
             ),
           ),
@@ -2049,6 +2168,22 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
       courseName: _golfCourseCtrl.text.isEmpty ? '신규코스' : _golfCourseCtrl.text,
       playerName: playerName,
       breakdown: breakdown,
+    );
+  }
+
+  Widget _buildConfigCheck(String label, bool value, ValueChanged<bool?> onChanged) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Checkbox(
+          value: value,
+          onChanged: (v) => setState(() => onChanged(v)),
+          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          visualDensity: VisualDensity.compact,
+        ),
+        Text(label, style: const TextStyle(fontSize: 12)),
+        const SizedBox(width: 8),
+      ],
     );
   }
 }

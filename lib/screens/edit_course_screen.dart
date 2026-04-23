@@ -61,8 +61,9 @@ class _EditCourseScreenState extends State<EditCourseScreen> {
       _courseSections.add(MapEntry(TextEditingController(text: '후반'), List.generate(9, (index) => 4)));
     }
 
-    // 만약 수동 베스트가 비어있다면, 기존 라운드 기록에서 가장 낮은 타수를 찾아 자동으로 채워줌
-    if (widget.initialBestScore == null && widget.initialName != null) {
+    // 만약 수동 베스트가 비어있거나 비정상적인 값(-1710타 등)이라면, 
+    // 기존 라운드 기록에서 가장 낮은 타수를 찾아 자동으로 채워줌
+    if ((widget.initialBestScore == null || widget.initialBestScore! < 40) && widget.initialName != null) {
       _autoUpdateBestScore();
     }
   }
@@ -81,16 +82,57 @@ class _EditCourseScreenState extends State<EditCourseScreen> {
         for (var rDoc in roundSnap.docs) {
           final rData = rDoc.data();
           final holes = rData['holes'] as List?;
-          if (holes != null) {
-            int totalGross = 0;
-            for (var h in holes) {
+          if (holes == null) continue;
+
+          // 미입력(-99) 홀이 하나라도 있으면 완료되지 않은 라운드이므로 제외
+          final hasUnenteredHole = holes.any((h) {
+            final m = h as Map<String, dynamic>;
+            return (m['score'] as int?) == -99;
+          });
+          if (hasUnenteredHole) continue;
+
+          // 나의 총 타수 계산
+          int myGross = holes.fold(0, (sum, h) {
+            final m = h as Map<String, dynamic>;
+            return sum + ((m['par'] as int?) ?? 4) + ((m['score'] as int?) ?? 0);
+          });
+
+          String myName = rData['userName'] as String? ?? '이름 모름';
+
+          // 동반자들의 타수도 비교
+          int roundBestGross = myGross;
+          String roundBestScorer = myName;
+
+          final companions = (rData['companions'] as List?)
+              ?.map((e) => e.toString())
+              .toList() ?? [];
+
+          for (int i = 0; i < companions.length; i++) {
+            // 해당 동반자의 18홀 점수가 모두 입력되었는지 확인 (-99 제외)
+            bool isCompComplete = holes.every((h) {
               final m = h as Map<String, dynamic>;
-              totalGross += ((m['par'] as int?) ?? 4) + ((m['score'] as int?) ?? 0);
+              final compScores = m['companionScores'] as List?;
+              return compScores != null && compScores.length > i && compScores[i] != -99;
+            });
+            if (!isCompComplete) continue;
+
+            int compGross = holes.fold(0, (sum, h) {
+              final m = h as Map<String, dynamic>;
+              final compScores = m['companionScores'] as List?;
+              final compScore = (compScores != null && compScores.length > i)
+                  ? (compScores[i] as int? ?? 0)
+                  : 0;
+              return sum + ((m['par'] as int?) ?? 4) + compScore;
+            });
+            if (compGross < roundBestGross) {
+              roundBestGross = compGross;
+              roundBestScorer = companions[i];
             }
-            if (bestGross == null || totalGross < bestGross) {
-              bestGross = totalGross;
-              bestScorer = rData['userName'] ?? '이름 모름';
-            }
+          }
+
+          if (bestGross == null || roundBestGross < bestGross) {
+            bestGross = roundBestGross;
+            bestScorer = roundBestScorer;
           }
         }
 
