@@ -2173,18 +2173,16 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
             ],
           ),
           const SizedBox(height: 12),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: List.generate(totals.length, (i) {
-                final isPositive = totals[i] >= 0;
-                final amountColor = isPositive ? const Color(0xFF27AE60) : const Color(0xFFE74C3C);
-                final formattedAmount = NumberFormat('#,###').format(totals[i].abs());
-                
-                return Container(
-                  width: 85, // 모든 카드 동일 크기 고정
-                  margin: const EdgeInsets.only(right: 10),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          Row(
+            children: List.generate(totals.length, (i) {
+              final isPositive = totals[i] >= 0;
+              final amountColor = isPositive ? const Color(0xFF27AE60) : const Color(0xFFE74C3C);
+              final formattedAmount = NumberFormat('#,###').format(totals[i].abs());
+              
+              return Expanded(
+                child: Container(
+                  margin: EdgeInsets.only(right: i == totals.length - 1 ? 0 : 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(12),
@@ -2220,9 +2218,9 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
                       ),
                     ],
                   ),
-                );
-              }),
-            ),
+                ),
+              );
+            }),
           ),
         ],
       ),
