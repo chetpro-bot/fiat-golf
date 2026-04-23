@@ -501,7 +501,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.round != null ? '기록 수정 (v1.5.10)' : '기록 추가 (v1.5.10)'),
+        title: Text(widget.round != null ? '기록 수정 (v1.5.11)' : '기록 추가 (v1.5.11)'),
         actions: [
           if (widget.round != null)
             IconButton(
@@ -1610,11 +1610,12 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
           _buildPersonalScorecardGrid(_holes, 9, _selectedScorecardPlayerIndex),
           _buildScoreLegend(),
           _buildPersonalRoundStatistics(_holes, _selectedScorecardPlayerIndex),
-          const SizedBox(height: 80), // 여백 확보
+          const SizedBox(height: 16), // 캡처 시 하단 여백
                     ],
                   ),
                 ),
               ),
+              const SizedBox(height: 64), // 스크롤용 여백
         ],
       ),
     );
