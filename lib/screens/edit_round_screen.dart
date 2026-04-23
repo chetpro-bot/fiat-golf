@@ -501,7 +501,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.round != null ? '기록 수정 (v1.5.8)' : '기록 추가 (v1.5.8)'),
+        title: Text(widget.round != null ? '기록 수정 (v1.5.9)' : '기록 추가 (v1.5.9)'),
         actions: [
           if (widget.round != null)
             IconButton(
