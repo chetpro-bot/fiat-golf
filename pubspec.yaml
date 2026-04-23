@@ -1,7 +1,7 @@
 name: golf_score
 description: A new Flutter project.
 publish_to: 'none'
-version: 1.4.7+28
+version: 1.4.9+30
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -16,6 +16,9 @@ dependencies:
   firebase_auth: ^6.3.0
   intl: 0.20.2
   url_launcher: ^6.3.2
+  share_plus: ^13.1.0
+  path_provider: ^2.1.5
+  screenshot: ^3.0.0
 
 dev_dependencies:
   flutter_test:

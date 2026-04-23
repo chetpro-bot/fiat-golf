@@ -95,7 +95,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('나의 골프 기록 (v1.4.7)'),
+        title: const Text('나의 골프 기록 (v1.4.9)'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         leading: IconButton(
           icon: const Icon(Icons.logout, size: 20),
@@ -314,7 +314,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         height: 30,
         alignment: Alignment.center,
         child: Text(
-          'App Version v1.4.7',
+          'App Version v1.4.9',
           style: TextStyle(fontSize: 10, color: Colors.grey.withOpacity(0.5)),
         ),
       ),
