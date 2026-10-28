@@ -543,7 +543,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('스코어 분포도 (전체 / 라운드당 평균)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const Text('스코어 분포도 (라운드당 평균)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
             _buildDistBar('Eagle+', dist['Eagle+']!, total, rounds, Colors.red),
             _buildDistBar('Birdie', dist['Birdie']!, total, rounds, Colors.red.shade200),
@@ -558,11 +558,8 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   }
 
   Widget _buildDistBar(String label, int count, int total, int rounds, Color color) {
-    double pct = total > 0 ? count / total : 0;
-    double avgCount = rounds > 0 ? count / rounds : 0;
-    final String subText = rounds > 1
-        ? '(${_formatAvg(avgCount)} · ${(pct * 100).toStringAsFixed(0)}%)'
-        : '(${(pct * 100).toStringAsFixed(0)}%)';
+    double pct = total > 0 ? (count / total).clamp(0.0, 1.0) : 0.0;
+    double avgCount = rounds > 0 ? count / rounds : 0.0;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
@@ -570,45 +567,64 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
         children: [
           SizedBox(width: 55, child: Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500))),
           Expanded(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(6),
-              child: LinearProgressIndicator(
-                value: pct,
-                minHeight: 12,
-                backgroundColor: Colors.grey.shade200,
-                valueColor: AlwaysStoppedAnimation<Color>(color),
-              ),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final double totalWidth = constraints.maxWidth;
+                final double barWidth = totalWidth * pct;
+                final double displayBarWidth = count > 0 ? (barWidth < 6.0 ? 6.0 : barWidth) : 0.0;
+                final String countText = '$count';
+                final double approxTextWidth = countText.length * 7.5 + 4;
+                final bool fitsAfterBar = (displayBarWidth + approxTextWidth + 6) <= totalWidth;
+
+                return ClipRRect(
+                  borderRadius: BorderRadius.circular(7),
+                  child: Container(
+                    height: 14,
+                    width: totalWidth,
+                    color: Colors.grey.shade200,
+                    child: Stack(
+                      alignment: Alignment.centerLeft,
+                      children: [
+                        if (displayBarWidth > 0)
+                          Container(
+                            width: displayBarWidth,
+                            height: 14,
+                            decoration: BoxDecoration(
+                              color: color,
+                              borderRadius: BorderRadius.circular(7),
+                            ),
+                          ),
+                        Positioned(
+                          left: fitsAfterBar ? (displayBarWidth + 4) : null,
+                          right: fitsAfterBar ? null : 6,
+                          top: 0,
+                          bottom: 0,
+                          child: Center(
+                            child: Text(
+                              countText,
+                              style: TextStyle(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.bold,
+                                color: fitsAfterBar ? Colors.grey.shade800 : Colors.white,
+                                height: 1.0,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
             ),
           ),
           const SizedBox(width: 8),
           SizedBox(
-            width: 115,
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerRight,
-              child: RichText(
-                textAlign: TextAlign.right,
-                text: TextSpan(
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
-                  children: [
-                    TextSpan(
-                      text: '$count개 ',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                        fontSize: 13,
-                      ),
-                    ),
-                    TextSpan(
-                      text: subText,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.grey.shade600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+            width: 85,
+            child: Text(
+              '${_formatAvg(avgCount)} (${(pct * 100).toStringAsFixed(0)}%)',
+              textAlign: TextAlign.right,
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
             ),
           ),
         ],
