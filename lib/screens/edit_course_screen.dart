@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth_service.dart';
+import '../services/course_service.dart';
 
 class EditCourseScreen extends StatefulWidget {
   final String? docId;
@@ -29,7 +30,7 @@ class _EditCourseScreenState extends State<EditCourseScreen> {
   late TextEditingController _bestScorerCtrl;
 
   // 코스별 데이터: 코스이름 -> List<int> (9 holes par)
-  List<MapEntry<TextEditingController, List<int>>> _courseSections = [];
+  final List<MapEntry<TextEditingController, List<int>>> _courseSections = [];
 
   bool _isSaving = false;
 
@@ -92,9 +93,9 @@ class _EditCourseScreenState extends State<EditCourseScreen> {
           if (hasUnenteredHole) continue;
 
           // 나의 총 타수 계산
-          int myGross = holes.fold(0, (sum, h) {
+          int myGross = holes.fold(0, (total, h) {
             final m = h as Map<String, dynamic>;
-            return sum + ((m['par'] as int?) ?? 4) + ((m['score'] as int?) ?? 0);
+            return total + ((m['par'] as int?) ?? 4) + ((m['score'] as int?) ?? 0);
           });
 
           String myName = rData['userName'] as String? ?? '이름 모름';
@@ -116,13 +117,13 @@ class _EditCourseScreenState extends State<EditCourseScreen> {
             });
             if (!isCompComplete) continue;
 
-            int compGross = holes.fold(0, (sum, h) {
+            int compGross = holes.fold(0, (total, h) {
               final m = h as Map<String, dynamic>;
               final compScores = m['companionScores'] as List?;
               final compScore = (compScores != null && compScores.length > i)
                   ? (compScores[i] as int? ?? 0)
                   : 0;
-              return sum + ((m['par'] as int?) ?? 4) + compScore;
+              return total + ((m['par'] as int?) ?? 4) + compScore;
             });
             if (compGross < roundBestGross) {
               roundBestGross = compGross;
@@ -165,11 +166,39 @@ class _EditCourseScreenState extends State<EditCourseScreen> {
     });
   }
 
-  void _removeCourseSection(int index) {
+  Future<void> _removeCourseSection(int index) async {
+    final subCourseName = _courseSections[index].key.text.trim();
+    final courseName = widget.initialName ?? _nameCtrl.text.trim();
+
+    // 코스 이름이 입력되어 있는 경우, 라운드 사용 여부 확인 후 삭제 진행
+    if (subCourseName.isNotEmpty && courseName.isNotEmpty) {
+      final confirmed = await CourseService().confirmDeleteSubCourse(
+        context,
+        courseName: courseName,
+        subCourseName: subCourseName,
+        docId: widget.docId,
+      );
+      if (!confirmed) return;
+    }
+
+    if (!mounted) return;
     setState(() {
       _courseSections[index].key.dispose();
       _courseSections.removeAt(index);
     });
+  }
+
+  Future<void> _deleteCourse() async {
+    if (widget.docId == null) return;
+    final courseName = widget.initialName ?? _nameCtrl.text.trim();
+    final deleted = await CourseService().confirmAndDeleteCourse(
+      context,
+      docId: widget.docId!,
+      courseName: courseName,
+    );
+    if (deleted && mounted) {
+      Navigator.pop(context);
+    }
   }
 
   Future<void> _saveCourse() async {
@@ -209,7 +238,9 @@ class _EditCourseScreenState extends State<EditCourseScreen> {
         Navigator.pop(context);
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('저장 실패: $e')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('저장 실패: $e')));
+      }
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -220,6 +251,14 @@ class _EditCourseScreenState extends State<EditCourseScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.docId == null ? '골프장 추가' : '골프장 수정'),
+        actions: [
+          if (widget.docId != null)
+            IconButton(
+              icon: const Icon(Icons.delete_outline, color: Colors.red),
+              tooltip: '골프장 삭제',
+              onPressed: _deleteCourse,
+            ),
+        ],
       ),
       bottomNavigationBar: Container(
         padding: const EdgeInsets.all(16),
@@ -227,7 +266,7 @@ class _EditCourseScreenState extends State<EditCourseScreen> {
           color: Colors.white,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 10,
               offset: const Offset(0, -5),
             ),
@@ -264,109 +303,110 @@ class _EditCourseScreenState extends State<EditCourseScreen> {
               ),
               validator: (val) => val == null || val.trim().isEmpty ? '골프장 이름을 입력하세요' : null,
             ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextFormField(
-                          controller: _bestScoreCtrl,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText: '베스트 스코어 (타수)',
-                            border: OutlineInputBorder(),
-                            prefixIcon: Icon(Icons.emoji_events, color: Colors.orange),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: TextFormField(
-                          controller: _bestScorerCtrl,
-                          decoration: const InputDecoration(
-                            labelText: '달성자 (이름)',
-                            border: OutlineInputBorder(),
-                            prefixIcon: Icon(Icons.person, color: Colors.blue),
-                          ),
-                        ),
-                      ),
-                    ],
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: TextFormField(
+                    controller: _bestScoreCtrl,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: '베스트 스코어 (타수)',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.emoji_events, color: Colors.orange),
+                    ),
                   ),
-                  const SizedBox(height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text('세부 코스 설정', style: Theme.of(context).textTheme.titleLarge),
-                      TextButton.icon(
-                        onPressed: _addCourseSection,
-                        icon: const Icon(Icons.add),
-                        label: const Text('코스 추가'),
-                      )
-                    ],
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: TextFormField(
+                    controller: _bestScorerCtrl,
+                    decoration: const InputDecoration(
+                      labelText: '달성자 (이름)',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.person, color: Colors.blue),
+                    ),
                   ),
-                  const Divider(),
-                  ...List.generate(_courseSections.length, (index) {
-                    final section = _courseSections[index];
-                    return Card(
-                      margin: const EdgeInsets.symmetric(vertical: 8),
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('세부 코스 설정', style: Theme.of(context).textTheme.titleLarge),
+                TextButton.icon(
+                  onPressed: _addCourseSection,
+                  icon: const Icon(Icons.add),
+                  label: const Text('코스 추가'),
+                )
+              ],
+            ),
+            const Divider(),
+            ...List.generate(_courseSections.length, (index) {
+              final section = _courseSections[index];
+              return Card(
+                margin: const EdgeInsets.symmetric(vertical: 8),
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              controller: section.key,
+                              decoration: const InputDecoration(
+                                labelText: '코스명 (예: Out, In)',
+                                isDense: true,
+                                border: OutlineInputBorder(),
+                              ),
+                              validator: (val) => val == null || val.trim().isEmpty ? '코스명을 입력하세요' : null,
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.remove_circle, color: Colors.red),
+                            tooltip: '코스 삭제',
+                            onPressed: () => _removeCourseSection(index),
+                          )
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      const Text('홀별 Par 설정 (총 9홀)', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: List.generate(9, (hIdx) {
+                          return SizedBox(
+                            width: 58,
+                            child: Column(
                               children: [
-                                Expanded(
-                                  child: TextFormField(
-                                    controller: section.key,
-                                    decoration: InputDecoration(
-                                      labelText: '코스명 (예: Out, In)',
-                                      isDense: true,
-                                      border: const OutlineInputBorder(),
-                                    ),
-                                    validator: (val) => val == null || val.trim().isEmpty ? '코스명을 입력하세요' : null,
-                                  ),
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.remove_circle, color: Colors.red),
-                                  onPressed: () => _removeCourseSection(index),
+                                Text('${hIdx + 1}H', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                DropdownButton<int>(
+                                  value: section.value[hIdx],
+                                  isExpanded: true,
+                                  items: [3, 4, 5].map((e) => DropdownMenuItem(value: e, child: Center(child: Text('$e')))).toList(),
+                                  onChanged: (val) {
+                                    if (val != null) {
+                                      setState(() => section.value[hIdx] = val);
+                                    }
+                                  },
                                 )
                               ],
                             ),
-                            const SizedBox(height: 12),
-                            const Text('홀별 Par 설정 (총 9홀)', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                            const SizedBox(height: 8),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: List.generate(9, (hIdx) {
-                                return SizedBox(
-                                  width: 58,
-                                  child: Column(
-                                    children: [
-                                      Text('${hIdx + 1}H', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                                      DropdownButton<int>(
-                                        value: section.value[hIdx],
-                                        isExpanded: true,
-                                        items: [3, 4, 5].map((e) => DropdownMenuItem(value: e, child: Center(child: Text('$e')))).toList(),
-                                        onChanged: (val) {
-                                          if (val != null) {
-                                            setState(() => section.value[hIdx] = val);
-                                          }
-                                        },
-                                      )
-                                    ],
-                                  ),
-                                );
-                              }),
-                            ),
-                          ],
-                        ),
+                          );
+                        }),
                       ),
-                    );
-                  })
-                ],
-              ),
-            ),
+                    ],
+                  ),
+                ),
+              );
+            })
+          ],
+        ),
+      ),
     );
   }
 }

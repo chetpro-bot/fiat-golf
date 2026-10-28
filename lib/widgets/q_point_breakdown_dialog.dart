@@ -50,11 +50,11 @@ void showQPointBreakdownDialog(
               _bonusRow('Sub-80 Round',      breakdown.under80       ? 4 : 0),
               _bonusRow('GIR 50%+',          breakdown.gir50         ? 4 : 0),
               _bonusRow('Scrambling 50%+',   breakdown.scrambling    ? 4 : 0),
-              _bonusRow('Putts 29 or less',  breakdown.puttsUnder30  ? 4 : 0),
-              _bonusRow('No Three Putt',      breakdown.noThreePutt   ? 4 : 0),
-              _bonusRow('One Ball Play',      breakdown.noPenalty     ? 4 : 0),
-              _bonusRow('Digital Round',      breakdown.digital       ? 4 : 0),
-              _bonusRow('Bounce Back',        breakdown.bounceBackCount * 2),
+              _bonusRow('Putts Bonus',       breakdown.puttsBonusPoints),
+              _bonusRow('No Three Putt',     breakdown.noThreePutt   ? 4 : 0),
+              _bonusRow('One Ball Play',     breakdown.noPenalty     ? 4 : 0),
+              _bonusRow('Digital Round',     breakdown.digital       ? 4 : 0),
+              _bonusRow('Bounce Back',       breakdown.bounceBackCount * 2),
               const Divider(color: Colors.grey, height: 10),
 
               // 홀별 상세: 1-9번(왼쪽) / 10-18번(오른쪽)

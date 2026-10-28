@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth_service.dart';
+import 'dart:async';
+import 'package:web/web.dart' as web;
+import '../constants/app_version.dart';
 import 'package:intl/intl.dart';
 
 import '../models/round_model.dart';
@@ -19,12 +23,116 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
+  StreamSubscription? _updateSubscription;
+  bool _updateDialogShown = false;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkUserName();
+      _listenForAppUpdate();
     });
+  }
+
+  @override
+  void dispose() {
+    _updateSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _listenForAppUpdate() {
+    _updateSubscription = FirebaseFirestore.instance
+        .collection('app_meta')
+        .doc('version')
+        .snapshots()
+        .listen((doc) {
+      if (!doc.exists) return;
+      final data = doc.data();
+      if (data == null) return;
+      final serverVersion = data['version'] as String? ?? '';
+      final serverBuild = (data['buildNumber'] as num?)?.toInt() ?? 0;
+      final notes = data['releaseNotes'] as String? ?? '';
+
+      if ((serverBuild > appBuildNumber || (serverVersion.isNotEmpty && serverVersion != appVersion)) &&
+          !_updateDialogShown &&
+          mounted) {
+        _updateDialogShown = true;
+        _showUpdatePromptDialog(serverVersion, notes);
+      }
+    }, onError: (e) {
+      debugPrint('버전 업데이트 리슨 에러: $e');
+    });
+  }
+
+  void _showUpdatePromptDialog(String serverVersion, String notes) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.system_update_rounded, color: Color(0xFF27AE60), size: 28),
+            SizedBox(width: 8),
+            Text('앱 업데이트 알림'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '새로운 버전(v$serverVersion)이 출시되었습니다.',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+            ),
+            if (notes.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  notes,
+                  style: TextStyle(fontSize: 13, color: Colors.grey.shade800),
+                ),
+              ),
+            ],
+            const SizedBox(height: 12),
+            const Text(
+              '최신 기능(코스 삭제 및 오장마스터 선핸디 룰 등)을 사용하려면 지금 업데이트해주세요.',
+              style: TextStyle(fontSize: 13, color: Colors.black87),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _updateDialogShown = false;
+            },
+            child: const Text('나중에'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (kIsWeb) {
+                web.window.location.reload();
+              } else {
+                Navigator.pop(ctx);
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF27AE60),
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('지금 업데이트'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _checkUserName() async {
@@ -96,7 +204,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('나의 골프 기록 (v1.5.11)'),
+        title: const Text('기록실', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         leading: IconButton(
           icon: const Icon(Icons.logout, size: 20),
@@ -104,6 +212,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
           onPressed: () => AuthService().signOut(),
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.sync, color: Colors.yellowAccent),
+            tooltip: '강제 동기화 (PWA 캐시 삭제)',
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('캐시를 비우고 최신 버전으로 동기화합니다...')),
+              );
+              DownloadService.forceWebUpdate();
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.person_outline),
             tooltip: '프로필 수정',
@@ -163,7 +281,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           
           return RefreshIndicator(
             onRefresh: () async {
-              DownloadService.forceWebReload();
+              DownloadService.forceWebUpdate();
               await Future.delayed(const Duration(seconds: 1)); // UI feedback before reload
             },
             child: ListView.builder(
@@ -319,11 +437,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
         },
       ),
       bottomNavigationBar: Container(
-        height: 30,
+        height: 40,
         alignment: Alignment.center,
+        padding: const EdgeInsets.only(bottom: 8),
         child: Text(
-          'App Version v1.5.11',
-          style: TextStyle(fontSize: 10, color: Colors.grey.withOpacity(0.5)),
+          'App Version v$appVersion',
+          style: TextStyle(fontSize: 13, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
         ),
       ),
       floatingActionButton: FloatingActionButton(

@@ -4,6 +4,7 @@ import 'package:flutter/rendering.dart';
 import 'dart:ui' as ui;
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
+import 'dart:js' as js;
 
 class DownloadService {
   /// RepaintBoundary key로 지정된 위젯을 PNG로 캡처하여 다운로드합니다.
@@ -62,6 +63,17 @@ class DownloadService {
       html.window.location.href = '$currentPath?v=$now';
     } catch (e) {
       debugPrint('Force reload failed: $e');
+    }
+  }
+
+  /// PWA 강제 업데이트 (Service Worker 캐시 완벽 삭제)
+  static void forceWebUpdate() {
+    try {
+      // index.html에 정의된 전역 JS 함수 호출
+      js.context.callMethod('forceClearCachesAndReload', []);
+    } catch (e) {
+      debugPrint('Force update failed: $e');
+      forceWebReload(); // fallback
     }
   }
 }

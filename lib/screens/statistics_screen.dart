@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../models/round_model.dart';
 import '../services/auth_service.dart';
 import '../services/download_service.dart';
+import 'dart:ui' as ui;
 
 class StatisticsScreen extends StatefulWidget {
   const StatisticsScreen({super.key});
@@ -14,6 +15,7 @@ class StatisticsScreen extends StatefulWidget {
 
 class _StatisticsScreenState extends State<StatisticsScreen> {
   String _selectedFilter = '누적';
+  String _selectedTrendTab = '스코어';
   final GlobalKey _repaintKey = GlobalKey();
   bool _isDownloading = false;
 
@@ -213,6 +215,57 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     double avgSecondOb = totalRounds > 0 ? secondObCount / totalRounds : 0;
     double avgSecondHazard = totalRounds > 0 ? secondHazardCount / totalRounds : 0;
 
+    int totalGrossScore = 0;
+    int totalCoursePar = 0;
+    for (var r in rounds) {
+      int roundPar = r.holes.fold(0, (acc, h) => acc + h.par);
+      totalCoursePar += roundPar;
+      totalGrossScore += (roundPar + r.totalScore);
+    }
+    double avgGrossScore = totalRounds > 0 ? totalGrossScore / totalRounds : 0.0;
+    double avgHandicap = totalRounds > 0 ? (totalGrossScore - totalCoursePar) / totalRounds : 0.0;
+
+    String avgHandicapStr;
+    if (avgHandicap > 0) {
+      avgHandicapStr = '+${avgHandicap.toStringAsFixed(1)}';
+    } else if (avgHandicap < 0) {
+      avgHandicapStr = avgHandicap.toStringAsFixed(1);
+    } else {
+      avgHandicapStr = 'E';
+    }
+
+    // 추이 분석용 데이터 추출 (과거 -> 최신 순이므로 rounds 리스트를 뒤집음)
+    List<RoundData> chronoRounds = rounds.reversed.toList();
+    List<double> trendValues = [];
+    List<String> trendDates = [];
+    
+    for (var r in chronoRounds) {
+      trendDates.add(DateFormat('MM/dd').format(r.date));
+      if (_selectedTrendTab == '스코어') {
+        int roundPar = r.holes.fold(0, (acc, h) => acc + h.par);
+        trendValues.add((roundPar + r.totalScore).toDouble());
+      } else if (_selectedTrendTab == 'Q-Point') {
+        trendValues.add(r.qPoint.toDouble());
+      } else if (_selectedTrendTab == '그린 적중률') {
+        int girCount = r.holes.where((h) => h.score != -99 && (h.score - h.putt) <= -2).length;
+        trendValues.add((girCount / 18.0) * 100.0);
+      } else if (_selectedTrendTab == '퍼트 수') {
+        int putts = r.holes.where((h) => h.putt != -99).fold(0, (acc, h) => acc + h.putt);
+        trendValues.add(putts.toDouble());
+      }
+    }
+
+    Color activeColor;
+    if (_selectedTrendTab == '스코어') {
+      activeColor = const Color(0xFF27AE60);
+    } else if (_selectedTrendTab == 'Q-Point') {
+      activeColor = const Color(0xFFD4AF37);
+    } else if (_selectedTrendTab == '그린 적중률') {
+      activeColor = const Color(0xFF2980B9);
+    } else {
+      activeColor = const Color(0xFFE67E22);
+    }
+
     // 전체 콘텐츠를 RepaintBoundary로 감싸 다운로드 가능하게 함
     return SingleChildScrollView(
       child: RepaintBoundary(
@@ -240,7 +293,30 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                 ],
               ),
               const SizedBox(height: 16),
-              _buildSummaryCard('평균 Q-Point', '${avgQPoint.toStringAsFixed(1)}pt', Icons.stars, const Color(0xFFD4AF37)),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildSummaryCard(
+                      '평균 핸디캡',
+                      avgHandicapStr,
+                      Icons.sports_golf,
+                      const Color(0xFF27AE60),
+                      subtitle: '평균 ${avgGrossScore.toStringAsFixed(1)}타',
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildSummaryCard(
+                      '평균 Q-Point',
+                      '${avgQPoint.toStringAsFixed(1)}pt',
+                      Icons.stars,
+                      const Color(0xFFD4AF37),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              _buildTrendAnalysisCard(trendValues, trendDates, activeColor),
               const SizedBox(height: 12),
               Card(
                 elevation: 2,
@@ -424,6 +500,10 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   }
 
   Widget _buildParStatsCard(int p3s, int p3h, int p4s, int p4h, int p5s, int p5h) {
+    double avg3 = p3h > 0 ? p3s / p3h : 0.0;
+    double avg4 = p4h > 0 ? p4s / p4h : 0.0;
+    double avg5 = p5h > 0 ? p5s / p5h : 0.0;
+
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -433,29 +513,24 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text('홀 유형별 평균 타수', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
+            const SizedBox(height: 16),
+            Table(
+              border: TableBorder.all(color: Colors.grey.shade300),
+              defaultVerticalAlignment: TableCellVerticalAlignment.middle,
               children: [
-                _buildParStat('Par 3', p3h > 0 ? p3s / p3h : 0, 3.0),
-                _buildParStat('Par 4', p4h > 0 ? p4s / p4h : 0, 4.0),
-                _buildParStat('Par 5', p5h > 0 ? p5s / p5h : 0, 5.0),
+                TableRow(
+                  decoration: BoxDecoration(color: Colors.grey.shade50),
+                  children: [
+                    _buildStatCell('Par 3', avg3 > 0 ? avg3.toStringAsFixed(1) : '-', valueColor: avg3 > 3.0 ? Colors.redAccent : const Color(0xFF27AE60)),
+                    _buildStatCell('Par 4', avg4 > 0 ? avg4.toStringAsFixed(1) : '-', valueColor: avg4 > 4.0 ? Colors.redAccent : const Color(0xFF27AE60)),
+                    _buildStatCell('Par 5', avg5 > 0 ? avg5.toStringAsFixed(1) : '-', valueColor: avg5 > 5.0 ? Colors.redAccent : const Color(0xFF27AE60)),
+                  ],
+                ),
               ],
-            )
+            ),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildParStat(String title, double avg, double parTarget) {
-    Color col = avg > parTarget ? Colors.redAccent : const Color(0xFF27AE60);
-    return Column(
-      children: [
-        Text(title, style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 8),
-        Text(avg > 0 ? avg.toStringAsFixed(1) : '-', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: col)),
-      ],
     );
   }
 
@@ -505,5 +580,357 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
         ],
       ),
     );
+  }
+
+  Widget _buildTrendTabButton(String label) {
+    bool isSelected = _selectedTrendTab == label;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          setState(() {
+            _selectedTrendTab = label;
+          });
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          decoration: BoxDecoration(
+            color: isSelected ? const Color(0xFF27AE60) : Colors.grey.shade100,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: isSelected ? const Color(0xFF27AE60) : Colors.grey.shade300,
+              width: 1,
+            ),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: isSelected ? Colors.white : Colors.grey.shade600,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTrendAnalysisCard(List<double> values, List<String> dates, Color activeColor) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.trending_up, color: Color(0xFF27AE60), size: 20),
+                const SizedBox(width: 8),
+                const Text(
+                  '📈 추이 분석',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF27AE60)),
+                ),
+                const Spacer(),
+                if (values.isNotEmpty)
+                  Text(
+                    '최근 ${values.length}경기',
+                    style: TextStyle(fontSize: 11, color: Colors.grey.shade500, fontWeight: FontWeight.w500),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                _buildTrendTabButton('스코어'),
+                const SizedBox(width: 6),
+                _buildTrendTabButton('Q-Point'),
+                const SizedBox(width: 6),
+                _buildTrendTabButton('그린 적중률'),
+                const SizedBox(width: 6),
+                _buildTrendTabButton('퍼트 수'),
+              ],
+            ),
+            const SizedBox(height: 12),
+            TrendChart(
+              values: values,
+              labels: dates,
+              color: activeColor,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class TrendChart extends StatelessWidget {
+  final List<double> values;
+  final List<String> labels;
+  final Color color;
+
+  const TrendChart({
+    super.key,
+    required this.values,
+    required this.labels,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (values.isEmpty) {
+      return const SizedBox(
+        height: 180,
+        child: Center(child: Text('데이터가 없습니다.')),
+      );
+    }
+    return Container(
+      height: 180,
+      width: double.infinity,
+      padding: const EdgeInsets.only(top: 16, bottom: 8),
+      child: CustomPaint(
+        painter: TrendChartPainter(values: values, labels: labels, color: color),
+      ),
+    );
+  }
+}
+
+class TrendChartPainter extends CustomPainter {
+  final List<double> values;
+  final List<String> labels;
+  final Color color;
+
+  TrendChartPainter({
+    required this.values,
+    required this.labels,
+    required this.color,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (values.isEmpty) return;
+
+    double leftPadding = 24.0;
+    double rightPadding = 12.0;
+    double topPadding = 16.0;
+    double bottomPadding = 24.0;
+    
+    double chartWidth = size.width - leftPadding - rightPadding;
+    double chartHeight = size.height - topPadding - bottomPadding;
+
+    // Y-axis scaling
+    double minY = values.reduce((a, b) => a < b ? a : b);
+    double maxY = values.reduce((a, b) => a > b ? a : b);
+    
+    if (minY == maxY) {
+      minY -= 5;
+      maxY += 5;
+    } else {
+      double range = maxY - minY;
+      minY -= range * 0.15;
+      maxY += range * 0.15;
+    }
+
+    // Grid lines
+    const int gridLines = 4;
+    final gridPaint = Paint()
+      ..color = Colors.grey.shade100
+      ..strokeWidth = 1
+      ..style = PaintingStyle.stroke;
+
+    final textPainter = TextPainter(
+      textDirection: ui.TextDirection.ltr,
+    );
+
+    // Draw horizontal grid lines and Y-axis labels
+    for (int i = 0; i < gridLines; i++) {
+      double yVal = maxY - (i * (maxY - minY) / (gridLines - 1));
+      double yPos = topPadding + (i * chartHeight / (gridLines - 1));
+
+      // Draw grid line
+      canvas.drawLine(Offset(leftPadding, yPos), Offset(size.width - rightPadding, yPos), gridPaint);
+
+      // Draw Y label
+      textPainter.text = TextSpan(
+        text: _formatYLabel(yVal),
+        style: TextStyle(fontSize: 9, color: Colors.grey.shade400, fontWeight: FontWeight.w500),
+      );
+      textPainter.layout();
+      textPainter.paint(canvas, Offset(leftPadding - textPainter.width - 6, yPos - 6));
+    }
+
+    // Coordinates calculation
+    int n = values.length;
+    double stepX = n > 1 ? chartWidth / (n - 1) : chartWidth;
+    List<Offset> points = [];
+
+    for (int i = 0; i < n; i++) {
+      double x = leftPadding + (i * stepX);
+      double ratio = (values[i] - minY) / (maxY - minY);
+      double y = topPadding + chartHeight - (ratio * chartHeight);
+      points.add(Offset(x, y));
+    }
+
+    // Paint line path
+    final linePaint = Paint()
+      ..color = color
+      ..strokeWidth = 3
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    final path = Path();
+    if (n > 0) {
+      path.moveTo(points[0].dx, points[0].dy);
+      for (int i = 1; i < n; i++) {
+        path.lineTo(points[i].dx, points[i].dy);
+      }
+    }
+    canvas.drawPath(path, linePaint);
+
+    // Paint gradient area below path
+    if (n > 0) {
+      final fillPath = Path()
+        ..moveTo(points[0].dx, points[0].dy);
+      for (int i = 1; i < n; i++) {
+        fillPath.lineTo(points[i].dx, points[i].dy);
+      }
+      fillPath.lineTo(points[n - 1].dx, topPadding + chartHeight);
+      fillPath.lineTo(points[0].dx, topPadding + chartHeight);
+      fillPath.close();
+
+      final fillPaint = Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            color.withOpacity(0.2),
+            color.withOpacity(0.0),
+          ],
+        ).createShader(Rect.fromLTRB(leftPadding, topPadding, size.width - rightPadding, topPadding + chartHeight))
+        ..style = PaintingStyle.fill;
+
+      canvas.drawPath(fillPath, fillPaint);
+    }
+
+    // Paint average line
+    final double avgValue = values.reduce((a, b) => a + b) / n;
+    final double avgRatio = (avgValue - minY) / (maxY - minY);
+    final double avgY = topPadding + chartHeight - (avgRatio * chartHeight);
+
+    final avgLinePaint = Paint()
+      ..color = Colors.grey.shade500
+      ..strokeWidth = 1.5
+      ..style = PaintingStyle.stroke;
+
+    // Draw dashed average line
+    const double dashWidth = 6.0;
+    const double dashSpace = 4.0;
+    double currentX = leftPadding;
+    final double endX = size.width - rightPadding;
+    while (currentX < endX) {
+      canvas.drawLine(
+        Offset(currentX, avgY),
+        Offset((currentX + dashWidth).clamp(0.0, endX), avgY),
+        avgLinePaint,
+      );
+      currentX += dashWidth + dashSpace;
+    }
+
+    // Draw average label — fixed at top-right corner of chart
+    final String avgLabel = '평균 ${_formatValue(avgValue)}';
+    textPainter.text = TextSpan(
+      text: avgLabel,
+      style: TextStyle(
+        fontSize: 9,
+        fontWeight: FontWeight.bold,
+        color: Colors.grey.shade600,
+      ),
+    );
+    textPainter.layout();
+    const double labelPadding = 4.0;
+    final double labelW = textPainter.width + labelPadding * 2;
+    final double labelH = textPainter.height + labelPadding;
+    final double labelX = size.width - rightPadding - labelW;
+    const double labelY = 0.0; // top of the canvas (above topPadding)
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(labelX, labelY, labelW, labelH),
+        const Radius.circular(4),
+      ),
+      Paint()..color = Colors.grey.shade200..style = PaintingStyle.fill,
+    );
+    textPainter.paint(canvas, Offset(labelX + labelPadding, labelY + labelPadding / 2));
+
+    // Paint dots and values
+    final pointPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+    
+    final pointBorderPaint = Paint()
+      ..color = Colors.white
+      ..strokeWidth = 2
+      ..style = PaintingStyle.stroke;
+
+    final darkColor = HSLColor.fromColor(color).withLightness((HSLColor.fromColor(color).lightness - 0.2).clamp(0.0, 1.0)).toColor();
+
+    for (int i = 0; i < n; i++) {
+      final pt = points[i];
+      
+      canvas.drawCircle(pt, 5, pointPaint);
+      canvas.drawCircle(pt, 5, pointBorderPaint);
+
+      // Value label above point
+      bool shouldDrawValue = n <= 10 || (n <= 20 && i % 2 == 0) || i == 0 || i == n - 1;
+      if (shouldDrawValue) {
+        textPainter.text = TextSpan(
+          text: _formatValue(values[i]),
+          style: TextStyle(
+            fontSize: 9,
+            fontWeight: FontWeight.bold,
+            color: darkColor,
+          ),
+        );
+        textPainter.layout();
+        
+        // Draw small background for text readability
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+            Rect.fromLTWH(pt.dx - textPainter.width / 2 - 3, pt.dy - 17, textPainter.width + 6, textPainter.height + 2),
+            const Radius.circular(4),
+          ),
+          Paint()..color = Colors.white.withOpacity(0.9)..style = PaintingStyle.fill,
+        );
+        textPainter.paint(canvas, Offset(pt.dx - textPainter.width / 2, pt.dy - 16));
+      }
+
+      // X label (date)
+      bool shouldDrawLabel = n <= 6 || (n <= 12 && i % 2 == 0) || (n <= 20 && i % 3 == 0) || i == 0 || i == n - 1;
+      if (shouldDrawLabel && i < labels.length) {
+        textPainter.text = TextSpan(
+          text: labels[i],
+          style: TextStyle(fontSize: 9, color: Colors.grey.shade500, fontWeight: FontWeight.w500),
+        );
+        textPainter.layout();
+        textPainter.paint(canvas, Offset(pt.dx - textPainter.width / 2, topPadding + chartHeight + 6));
+      }
+    }
+  }
+
+  String _formatYLabel(double v) {
+    return v.toStringAsFixed(0);
+  }
+
+  String _formatValue(double v) {
+    if (v == v.toInt()) return v.toInt().toString();
+    return v.toStringAsFixed(1);
+  }
+
+  @override
+  bool shouldRepaint(covariant TrendChartPainter oldDelegate) {
+    return oldDelegate.values != values ||
+        oldDelegate.labels != labels ||
+        oldDelegate.color != color;
   }
 }

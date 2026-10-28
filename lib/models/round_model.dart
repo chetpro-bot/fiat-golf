@@ -8,8 +8,10 @@ class OjangConfig {
   bool baepanTripleP45; // 파4,5 트리플 이상 배판
   bool baepanDoubleP3; // 파3 더블 이상 배판
   int nearestRule; // 0:안함, 1:기본, 2:지우기/실패포함
-  int ruleType; // 0: 오장 후핸디, 1: 오목회
-  List<String> expertPlayers; // 고수 패널티 대상자 목록
+  int ruleType; // 0: 오장 후핸디, 1: 오장 선핸디
+  int baepanTiming; // 0: 당배판 (현재 홀 기준), 1: 후배판 (이전 홀 기준)
+  List<int> playerHandicaps; // 멤버별 핸디캡 (0: 나, 1~3: 동반자)
+  List<String> expertPlayers; // 기존 호환용
 
   OjangConfig({
     this.enabled = false,
@@ -20,8 +22,10 @@ class OjangConfig {
     this.baepanDoubleP3 = true,
     this.nearestRule = 2,
     this.ruleType = 0,
+    this.baepanTiming = 0,
+    List<int>? playerHandicaps,
     this.expertPlayers = const [],
-  });
+  }) : playerHandicaps = playerHandicaps ?? [0, 0, 0, 0];
 
   Map<String, dynamic> toMap() {
     return {
@@ -33,6 +37,8 @@ class OjangConfig {
       'baepanDoubleP3': baepanDoubleP3,
       'nearestRule': nearestRule,
       'ruleType': ruleType,
+      'baepanTiming': baepanTiming,
+      'playerHandicaps': playerHandicaps,
       'expertPlayers': expertPlayers,
     };
   }
@@ -47,6 +53,8 @@ class OjangConfig {
       baepanDoubleP3: map['baepanDoubleP3'] ?? true,
       nearestRule: map['nearestRule'] ?? 2,
       ruleType: map['ruleType'] ?? 0,
+      baepanTiming: map['baepanTiming'] ?? 0,
+      playerHandicaps: List<int>.from(map['playerHandicaps'] ?? [0, 0, 0, 0]),
       expertPlayers: List<String>.from(map['expertPlayers'] ?? []),
     );
   }
@@ -148,14 +156,18 @@ class HoleData {
     );
   }
 
-  int get penaltyStrokes => (teeOb * 2) + (secondOb * 2) + teeHazard + secondHazard;
+  int get penaltyStrokes {
+    final int teeObPenalty = (par == 3) ? 1 : 2;
+    return (teeOb * teeObPenalty) + (secondOb * 1) + teeHazard + secondHazard;
+  }
 
   int getPlayerPenaltyStrokes(int playerIndex) {
     if (playerIndex == 0) return penaltyStrokes;
     int cIdx = playerIndex - 1;
     if (cIdx < 0 || cIdx >= 3) return 0;
     
-    return (companionTeeOb[cIdx] * 2) + (companionSecondOb[cIdx] * 2) + 
+    final int teeObPenalty = (par == 3) ? 1 : 2;
+    return (companionTeeOb[cIdx] * teeObPenalty) + (companionSecondOb[cIdx] * 1) + 
            companionTeeHazard[cIdx] + companionSecondHazard[cIdx];
   }
 
@@ -181,21 +193,18 @@ class HoleData {
     // 2. 파
     if (s == 0) {
       if (p <= 1) return 4;
-      if (p == 2) return 3;
-      if (p >= 3) return 2;
+      return 3;
     }
 
     // 3. 보기
     if (s == 1) {
       if (p <= 1) return 3;
-      if (p == 2) return 2;
-      if (p >= 3) return 1;
+      return 2;
     }
 
     // 4. 더블
     if (s == 2) {
-      if (p <= 1) return 2;
-      if (p >= 2) return 1;
+      return 1;
     }
 
     // 5. 트리플 이상 0점
@@ -229,7 +238,7 @@ class QPointBreakdown {
   final bool digital;
   final bool noThreePutt;
   final bool gir50;
-  final bool puttsUnder30;
+  final int puttsBonusPoints;
   final int bounceBackCount;
   final List<HoleQPointInfo> holeDetails;
 
@@ -241,7 +250,7 @@ class QPointBreakdown {
     required this.digital,
     required this.noThreePutt,
     required this.gir50,
-    required this.puttsUnder30,
+    required this.puttsBonusPoints,
     required this.bounceBackCount,
     required this.holeDetails,
   });
@@ -252,7 +261,7 @@ class QPointBreakdown {
                         (digital ? 4 : 0) + 
                         (noThreePutt ? 4 : 0) +
                         (gir50 ? 4 : 0) +
-                        (puttsUnder30 ? 4 : 0) +
+                        puttsBonusPoints +
                         (bounceBackCount * 2);
 
   int get total => holePoints + bonusPoints;
@@ -416,6 +425,13 @@ class RoundData {
 
     bool complete = holes.length == 18 && allHolesEntered;
     
+    int puttsBonus = 0;
+    if (complete) {
+      if (totalPutts <= 24) puttsBonus = 6;
+      else if (totalPutts <= 29) puttsBonus = 4;
+      else if (totalPutts <= 35) puttsBonus = 2;
+    }
+
     return QPointBreakdown(
       holePoints: holePoints,
       under80: complete && (totalPar + playerOverUnder) <= 79,
@@ -424,7 +440,7 @@ class RoundData {
       digital: complete && isDigital,
       noThreePutt: complete && !hasThreePutt,
       gir50: complete && (girCount / 18) >= 0.5,
-      puttsUnder30: complete && totalPutts <= 29,
+      puttsBonusPoints: puttsBonus,
       bounceBackCount: bounceBacks,
       holeDetails: holeDetails,
     );

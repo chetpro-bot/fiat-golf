@@ -501,7 +501,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.round != null ? '기록 수정 (v1.5.11)' : '기록 추가 (v1.5.11)'),
+        title: Text(widget.round != null ? '기록 수정' : '기록 추가', style: const TextStyle(fontSize: 18)),
         actions: [
           if (widget.round != null)
             IconButton(
@@ -722,7 +722,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
                                     SegmentedButton<int>(
                                       segments: const [
                                         ButtonSegment(value: 0, label: Text('오장(후핸디)', style: TextStyle(fontSize: 12))),
-                                        ButtonSegment(value: 1, label: Text('오목회(고수2배)', style: TextStyle(fontSize: 12))),
+                                        ButtonSegment(value: 1, label: Text('오장(선핸디)', style: TextStyle(fontSize: 12))),
                                       ],
                                       selected: {_ojangConfig.ruleType},
                                       onSelectionChanged: (Set<int> newSelection) {
@@ -734,6 +734,8 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
                                         selectedForegroundColor: const Color(0xFFB8860B),
                                       ),
                                     ),
+                                    if (_ojangConfig.ruleType == 1)
+                                      _buildHandicapSettings(),
                                     const SizedBox(height: 16),
                                     Row(
                                       children: [
@@ -936,7 +938,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
                   ),
                 ),
                 if (_ojangConfig.enabled && hole.score != -99)
-                  _buildHoleSettlementChip(hole, compNames),
+                  _buildHoleSettlementChip(start + index, hole, compNames),
               ],
             ),
             childrenPadding: const EdgeInsets.all(12),
@@ -1170,30 +1172,223 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
     );
   }
 
-  Widget _buildHoleSettlementChip(HoleData hole, List<String> compNames) {
+  Widget _buildHoleSettlementChip(int holeIndex, HoleData hole, List<String> compNames) {
     if (hole.companionScores.any((s) => s == -99)) return const SizedBox.shrink();
     
     final playerNames = [AuthService().currentUser?.displayName ?? '나', ...compNames];
-    final result = BettingService.calculateHole(hole, _ojangConfig, 1 + compNames.length, playerNames);
+    final prevHole = holeIndex > 0 ? _holes[holeIndex - 1] : null;
+    final result = BettingService.calculateHole(
+      hole, 
+      _ojangConfig, 
+      1 + compNames.length, 
+      playerNames,
+      prevHole: prevHole,
+    );
     final myGain = result.netGains[0];
     
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: myGain >= 0 ? const Color(0xFF27AE60).withOpacity(0.1) : Colors.red.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        myGain >= 0 ? '+${NumberFormat('#,###').format(myGain)}' : NumberFormat('#,###').format(myGain),
-        style: TextStyle(
-          fontSize: 12, 
-          fontWeight: FontWeight.bold, 
-          color: myGain >= 0 ? const Color(0xFF27AE60) : Colors.redAccent
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (result.isBaepan)
+          Container(
+            margin: const EdgeInsets.only(right: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: Colors.orange.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.orange, width: 0.8),
+            ),
+            child: const Text(
+              '배판',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+                color: Colors.deepOrange,
+              ),
+            ),
+          ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: myGain >= 0 ? const Color(0xFF27AE60).withOpacity(0.1) : Colors.red.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Text(
+            myGain >= 0 ? '+' : NumberFormat('#,###').format(myGain),
+            style: TextStyle(
+              fontSize: 12, 
+              fontWeight: FontWeight.bold, 
+              color: myGain >= 0 ? const Color(0xFF27AE60) : Colors.redAccent,
+            ),
+          ),
         ),
-      ),
+      ],
     );
   }
 
+  Widget _buildHandicapSettings() {
+    final List<String> compNames = _companionsCtrl.text
+        .split(',')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+    final allNames = [AuthService().currentUser?.displayName ?? '나', ...compNames];
+
+    while (_ojangConfig.playerHandicaps.length < allNames.length) {
+      _ojangConfig.playerHandicaps.add(0);
+    }
+
+    final initialGains = BettingService.calculateInitialHandicapGains(
+      handicaps: _ojangConfig.playerHandicaps,
+      unitPrice: _ojangConfig.unitPrice,
+      playerCount: allNames.length,
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 16),
+        const Text(
+          '배판 적용 기준', 
+          style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.grey),
+        ),
+        const SizedBox(height: 8),
+        SegmentedButton<int>(
+          segments: const [
+            ButtonSegment(value: 0, label: Text('당배판 (현재 홀 기준)', style: TextStyle(fontSize: 12))),
+            ButtonSegment(value: 1, label: Text('후배판 (이전 홀 기준)', style: TextStyle(fontSize: 12))),
+          ],
+          selected: {_ojangConfig.baepanTiming},
+          onSelectionChanged: (Set<int> newSelection) {
+            setState(() => _ojangConfig.baepanTiming = newSelection.first);
+          },
+          style: SegmentedButton.styleFrom(
+            visualDensity: VisualDensity.compact,
+            selectedBackgroundColor: const Color(0xFFD4AF37).withOpacity(0.2),
+            selectedForegroundColor: const Color(0xFFB8860B),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: const [
+            Text(
+              '멤버별 핸디캡 (선핸디 설정)', 
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.grey),
+            ),
+            Text(
+              '고수가 하수에게 핸디 지급', 
+              style: TextStyle(fontSize: 11, color: Colors.grey),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        ...List.generate(allNames.length, (idx) {
+          final name = allNames[idx];
+          final hVal = _ojangConfig.playerHandicaps[idx];
+          final gain = initialGains[idx];
+
+          return Container(
+            margin: const EdgeInsets.only(bottom: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.grey.shade300),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    name,
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const Text('핸디: ', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                InkWell(
+                  onTap: () {
+                    if (hVal > 0) {
+                      setState(() => _ojangConfig.playerHandicaps[idx] = hVal - 1);
+                    }
+                  },
+                  child: const Padding(
+                    padding: EdgeInsets.all(2.0),
+                    child: Icon(Icons.remove_circle_outline, size: 24, color: Colors.redAccent),
+                  ),
+                ),
+                Container(
+                  width: 44,
+                  height: 32,
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  child: TextFormField(
+                    key: ValueKey('handicap_${idx}_$hVal'),
+                    initialValue: '$hVal',
+                    keyboardType: TextInputType.number,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.black87),
+                    decoration: InputDecoration(
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 6, horizontal: 2),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(6),
+                        borderSide: BorderSide(color: Colors.grey.shade300),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(6),
+                        borderSide: const BorderSide(color: Color(0xFF27AE60), width: 1.5),
+                      ),
+                    ),
+                    onChanged: (v) {
+                      final val = int.tryParse(v) ?? 0;
+                      setState(() {
+                        _ojangConfig.playerHandicaps[idx] = val;
+                      });
+                    },
+                  ),
+                ),
+                InkWell(
+                  onTap: () {
+                    setState(() => _ojangConfig.playerHandicaps[idx] = hVal + 1);
+                  },
+                  child: const Padding(
+                    padding: EdgeInsets.all(2.0),
+                    child: Icon(Icons.add_circle_outline, size: 24, color: Color(0xFF27AE60)),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                SizedBox(
+                  width: 76,
+                  child: Container(
+                    alignment: Alignment.center,
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    decoration: BoxDecoration(
+                      color: gain > 0
+                          ? const Color(0xFF27AE60).withOpacity(0.1)
+                          : (gain < 0 ? Colors.red.withOpacity(0.1) : Colors.grey.withOpacity(0.1)),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      gain > 0
+                          ? '+${NumberFormat('#,###').format(gain)}'
+                          : (gain < 0 ? NumberFormat('#,###').format(gain) : '0'),
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: gain > 0
+                            ? const Color(0xFF27AE60)
+                            : (gain < 0 ? Colors.redAccent : Colors.grey),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }),
+      ],
+    );
+  }
 
   // 보다 슬림해진 +/- 구조 UI 컨트롤러 위젯 
   Widget _buildCounter(String label, int value, ValueChanged<int> onChanged, {bool isOverUnder = false}) {
@@ -1641,12 +1836,29 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
     int teeHazardCount = 0;
     int secondHazardCount = 0;
 
+    int par3Strokes = 0, par3Holes = 0;
+    int par4Strokes = 0, par4Holes = 0;
+    int par5Strokes = 0, par5Holes = 0;
+
+    Map<String, int> scoreDist = {
+      'Eagle+': 0,
+      'Birdie': 0,
+      'Par': 0,
+      'Bogey': 0,
+      'Double': 0,
+      'Triple+': 0
+    };
+    
+    int playedHoles = 0;
+
     for (var hole in holes) {
       int score = 0;
       int putt = 0;
       int penalty = 0;
       
+      bool isPlayed = false;
       if (playerIndex == 1) {
+        isPlayed = hole.score != -99;
         score = hole.score == -99 ? 0 : hole.score;
         putt = hole.putt == -99 ? 0 : hole.putt;
         penalty = hole.penaltyStrokes;
@@ -1656,6 +1868,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
         secondHazardCount += hole.secondHazard;
       } else {
         int compIdx = playerIndex - 2;
+        isPlayed = (hole.companionScores.length > compIdx && hole.companionScores[compIdx] != -99);
         score = (hole.companionScores.length > compIdx && hole.companionScores[compIdx] != -99) ? hole.companionScores[compIdx] : 0;
         putt = (hole.companionPutts.length > compIdx && hole.companionPutts[compIdx] != -99) ? hole.companionPutts[compIdx] : 0;
         penalty = hole.getPlayerPenaltyStrokes(compIdx + 1);
@@ -1664,6 +1877,8 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
         teeHazardCount += hole.companionTeeHazard[compIdx];
         secondHazardCount += hole.companionSecondHazard[compIdx];
       }
+      
+      if (isPlayed) playedHoles++;
       
       totalPutts += putt;
       totalPenaltyStrokes += penalty;
@@ -1680,6 +1895,27 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
         scramblingChances++;
         nonGirPutts += putt;
         if (score <= 0) scramblingSuccesses++;
+      }
+
+      if (isPlayed) {
+        int actualStrokes = hole.par + score;
+        if (hole.par == 3) {
+          par3Holes++;
+          par3Strokes += actualStrokes;
+        } else if (hole.par == 4) {
+          par4Holes++;
+          par4Strokes += actualStrokes;
+        } else if (hole.par == 5) {
+          par5Holes++;
+          par5Strokes += actualStrokes;
+        }
+
+        if (score <= -2) scoreDist['Eagle+'] = scoreDist['Eagle+']! + 1;
+        else if (score == -1) scoreDist['Birdie'] = scoreDist['Birdie']! + 1;
+        else if (score == 0) scoreDist['Par'] = scoreDist['Par']! + 1;
+        else if (score == 1) scoreDist['Bogey'] = scoreDist['Bogey']! + 1;
+        else if (score == 2) scoreDist['Double'] = scoreDist['Double']! + 1;
+        else if (score >= 3) scoreDist['Triple+'] = scoreDist['Triple+']! + 1;
       }
     }
 
@@ -1754,8 +1990,80 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
                 ),
               ],
             ),
+            const SizedBox(height: 24),
+            _buildParStatsCard(par3Strokes, par3Holes, par4Strokes, par4Holes, par5Strokes, par5Holes),
+            const SizedBox(height: 24),
+            _buildScoreDistributionCard(scoreDist, playedHoles),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildParStatsCard(int p3s, int p3h, int p4s, int p4h, int p5s, int p5h) {
+    double avg3 = p3h > 0 ? p3s / p3h : 0.0;
+    double avg4 = p4h > 0 ? p4s / p4h : 0.0;
+    double avg5 = p5h > 0 ? p5s / p5h : 0.0;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('홀 유형별 평균 타수', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
+        const SizedBox(height: 8),
+        Table(
+          border: TableBorder.all(color: Colors.grey.shade300),
+          defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+          children: [
+            TableRow(
+              decoration: BoxDecoration(color: Colors.grey.shade50),
+              children: [
+                _buildStatCell('Par 3', avg3 > 0 ? avg3.toStringAsFixed(1) : '-', valueColor: avg3 > 3.0 ? Colors.redAccent : const Color(0xFF27AE60)),
+                _buildStatCell('Par 4', avg4 > 0 ? avg4.toStringAsFixed(1) : '-', valueColor: avg4 > 4.0 ? Colors.redAccent : const Color(0xFF27AE60)),
+                _buildStatCell('Par 5', avg5 > 0 ? avg5.toStringAsFixed(1) : '-', valueColor: avg5 > 5.0 ? Colors.redAccent : const Color(0xFF27AE60)),
+              ],
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildScoreDistributionCard(Map<String, int> dist, int total) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('스코어 분포도', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
+        const SizedBox(height: 12),
+        _buildDistBar('Eagle+', dist['Eagle+']!, total, Colors.red),
+        _buildDistBar('Birdie', dist['Birdie']!, total, Colors.red.shade200),
+        _buildDistBar('Par', dist['Par']!, total, Colors.grey.shade400),
+        _buildDistBar('Bogey', dist['Bogey']!, total, Colors.cyan.shade200),
+        _buildDistBar('Double', dist['Double']!, total, Colors.blue.shade400),
+        _buildDistBar('Triple+', dist['Triple+']!, total, Colors.blue.shade900),
+      ],
+    );
+  }
+
+  Widget _buildDistBar(String label, int count, int total, Color color) {
+    double pct = total > 0 ? count / total : 0;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          SizedBox(width: 55, child: Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500))),
+          Expanded(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: LinearProgressIndicator(
+                value: pct,
+                minHeight: 10,
+                backgroundColor: Colors.grey.shade200,
+                valueColor: AlwaysStoppedAnimation<Color>(color),
+              ),
+            ),
+          ),
+          SizedBox(width: 60, child: Text('$count (${(pct * 100).toStringAsFixed(0)}%)', textAlign: TextAlign.right, style: TextStyle(fontSize: 11, color: Colors.grey.shade700))),
+        ],
       ),
     );
   }
@@ -2229,6 +2537,7 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
   }
   String _getScoreLabel(int score, int par) {
     if (score == -99) return '미입력';
+    if (par + score == 1) return 'Hole in One';
     if (score <= -3) return 'Albatross';
     if (score == -2) return 'Eagle';
     if (score == -1) return 'Birdie';

@@ -21,7 +21,7 @@
   <link rel="icon" type="image/png" href="favicon.png"/>
 
   <title>FIAT GOLF</title>
-  <link rel="manifest" href="manifest.json?v=20260424015">
+  <link rel="manifest" href="manifest.json?v=20261028003">
 
   <style>
     body {
@@ -65,37 +65,90 @@
   </style>
 </head>
 <body>
+  <!-- PWA Update Prompt UI -->
+  <div id="pwa-update-prompt" style="display: none; position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background-color: #1F2937; color: white; padding: 14px 24px; border-radius: 50px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); z-index: 99999; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; align-items: center; justify-content: space-between; gap: 20px; width: max-content; max-width: 90vw;">
+    <span style="font-size: 15px; font-weight: 500;">새로운 버전이 업데이트 되었습니다 🎉</span>
+    <button id="pwa-update-btn" style="background-color: #27AE60; color: white; border: none; padding: 10px 20px; border-radius: 25px; cursor: pointer; font-weight: bold; font-size: 14px; transition: background-color 0.2s;">최신버전 동기화</button>
+  </div>
+
   <script>
     // ==========================================================
-    // 강제 캐시 무효화 — 배포마다 BUILD_TS 값을 반드시 바꾸세요.
+    // PWA 강제 업데이트 및 알림 최적화 (iOS 사파리 완벽 대응)
     // ==========================================================
-    var BUILD_TS = '20260424015';   // ← 배포할 때마다 이 값을 변경 (YYYYMMDD + 빌드번호)
+    var BUILD_TS = '20261028004';   // ← 배포할 때마다 이 값을 변경 (YYYYMMDD + 빌드번호)
     var TS_KEY   = 'fiat_golf_build_ts';
-
-    // Service Worker 전부 즉시 해제
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then(function(regs) {
-        regs.forEach(function(r) { r.unregister(); });
+    var savedTs = localStorage.getItem(TS_KEY);
+    
+    function showUpdatePrompt(onConfirm) {
+      window.addEventListener('load', function() {
+        var prompt = document.getElementById('pwa-update-prompt');
+        var btn = document.getElementById('pwa-update-btn');
+        if (prompt && btn) {
+          prompt.style.display = 'flex';
+          btn.onclick = function() {
+            prompt.style.display = 'none';
+            btn.innerHTML = '동기화 중...';
+            btn.style.opacity = '0.7';
+            btn.disabled = true;
+            onConfirm();
+          };
+        }
       });
     }
 
-    var savedTs = localStorage.getItem(TS_KEY);
-
-    if (savedTs !== BUILD_TS) {
-      // 새 빌드 감지 → 모든 캐시 삭제 후 새로고침
-      console.log('[FIAT GOLF] New build detected (' + savedTs + ' → ' + BUILD_TS + '). Clearing cache...');
-      if ('caches' in window) {
-        caches.keys().then(function(names) {
-          return Promise.all(names.map(function(n) { return caches.delete(n); }));
-        }).then(function() {
-          localStorage.setItem(TS_KEY, BUILD_TS);
-          // location.replace 로 히스토리 쌓지 않고 교체 (무한루프 방지)
-          window.location.replace(window.location.href.split('?')[0] + '?_cb=' + BUILD_TS);
-        });
-      } else {
-        localStorage.setItem(TS_KEY, BUILD_TS);
-        window.location.replace(window.location.href.split('?')[0] + '?_cb=' + BUILD_TS);
+    async function forceClearCachesAndReload() {
+      console.log('[FIAT GOLF] Clearing cache and reloading for new version...');
+      try {
+        if ('serviceWorker' in navigator) {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          for (const r of regs) {
+            await r.unregister();
+            console.log('[FIAT GOLF] Unregistered SW');
+          }
+        }
+        if ('caches' in window) {
+          const names = await caches.keys();
+          for (const n of names) {
+            await caches.delete(n);
+            console.log('[FIAT GOLF] Deleted cache:', n);
+          }
+        }
+      } catch (e) {
+        console.error('[FIAT GOLF] Error clearing caches:', e);
       }
+
+      localStorage.setItem(TS_KEY, BUILD_TS);
+      
+      // 워커 해제가 브라우저에 완전히 반영될 시간을 약간 줍니다.
+      setTimeout(function() {
+        window.location.replace(window.location.href.split('?')[0] + '?_cb=' + new Date().getTime());
+      }, 500);
+    }
+
+    // 1. 버전 번호(BUILD_TS)가 다르면 업데이트 알림 표시 (기존의 즉시 새로고침 대신 프롬프트 표시)
+    if (savedTs && savedTs !== BUILD_TS) {
+      console.log('[FIAT GOLF] New build detected (' + savedTs + ' → ' + BUILD_TS + ').');
+      showUpdatePrompt(forceClearCachesAndReload);
+    } else if (!savedTs) {
+      localStorage.setItem(TS_KEY, BUILD_TS);
+    }
+
+    // 2. 서비스 워커 업데이트 감지 (앱을 켜둔 상태에서 백그라운드 업데이트가 발생할 때)
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.ready.then(function(reg) {
+        if (reg.waiting) {
+          showUpdatePrompt(forceClearCachesAndReload);
+        }
+        reg.addEventListener('updatefound', function() {
+          var newWorker = reg.installing;
+          newWorker.addEventListener('statechange', function() {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              console.log('[FIAT GOLF] New service worker installed. Showing prompt.');
+              showUpdatePrompt(forceClearCachesAndReload);
+            }
+          });
+        });
+      });
     }
   </script>
 
@@ -105,10 +158,35 @@
     <p style="color: #27AE60; font-weight: 500; margin-top: 16px; letter-spacing: 1px;">FIAT GOLF 로딩 중...</p>
   </div>
 
+  <!-- main.dart.js 캐시 강력 무효화를 위한 인터셉터 -->
+  <script>
+    function addCacheBusterToScript(el) {
+      if (el && el.tagName === 'SCRIPT' && el.src && el.src.includes('main.dart.js')) {
+        if (!el.src.includes('?v=')) {
+           el.src = el.src.split('?')[0] + '?v=' + BUILD_TS;
+        }
+      }
+    }
+    
+    var originalAppend = document.head.append;
+    document.head.append = function() {
+      for (var i = 0; i < arguments.length; i++) {
+        addCacheBusterToScript(arguments[i]);
+      }
+      return originalAppend.apply(this, arguments);
+    };
+
+    var originalAppendChild = document.head.appendChild;
+    document.head.appendChild = function(element) {
+      addCacheBusterToScript(element);
+      return originalAppendChild.apply(this, arguments);
+    };
+  </script>
+
   <!--
     flutter_bootstrap.js 뒤의 ?v= 쿼리스트링도 BUILD_TS 와 맞춰주세요.
     캐시된 index.html 이 있더라도 이 URL이 다르면 브라우저가 새 파일을 받습니다.
   -->
-  <script src="flutter_bootstrap.js?v=20260424015" async></script>
+  <script src="flutter_bootstrap.js?v=20261028003" async></script>
 </body>
 </html>
