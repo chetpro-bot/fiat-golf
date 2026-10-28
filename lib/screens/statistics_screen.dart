@@ -534,7 +534,25 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     );
   }
 
+  double _calculateScaleMax(int maxCount) {
+    if (maxCount <= 0) return 1.0;
+    // 최대 항목이 그래프 바의 약 70~80%를 채우도록 라운딩된 끝단값 산출
+    double target = maxCount / 0.76;
+    if (target <= 15) return 15.0;
+    if (target <= 50) return (target / 5).ceil() * 5.0;
+    if (target <= 200) return (target / 10).ceil() * 10.0;
+    if (target <= 500) return (target / 50).ceil() * 50.0;
+    if (target <= 1000) return (target / 100).ceil() * 100.0;
+    return (target / 200).ceil() * 200.0;
+  }
+
   Widget _buildScoreDistributionCard(Map<String, int> dist, int total, int rounds) {
+    int maxCount = 0;
+    for (var val in dist.values) {
+      if (val > maxCount) maxCount = val;
+    }
+    final double scaleMax = _calculateScaleMax(maxCount);
+
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -545,20 +563,21 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
           children: [
             const Text('스코어 분포도 (라운드당 평균)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
-            _buildDistBar('Eagle+', dist['Eagle+']!, total, rounds, Colors.red),
-            _buildDistBar('Birdie', dist['Birdie']!, total, rounds, Colors.red.shade200),
-            _buildDistBar('Par', dist['Par']!, total, rounds, Colors.grey.shade400),
-            _buildDistBar('Bogey', dist['Bogey']!, total, rounds, Colors.cyan.shade200),
-            _buildDistBar('Double', dist['Double']!, total, rounds, Colors.blue.shade400),
-            _buildDistBar('Triple+', dist['Triple+']!, total, rounds, Colors.blue.shade900),
+            _buildDistBar('Eagle+', dist['Eagle+']!, total, rounds, Colors.red, scaleMax),
+            _buildDistBar('Birdie', dist['Birdie']!, total, rounds, Colors.red.shade200, scaleMax),
+            _buildDistBar('Par', dist['Par']!, total, rounds, Colors.grey.shade400, scaleMax),
+            _buildDistBar('Bogey', dist['Bogey']!, total, rounds, Colors.cyan.shade200, scaleMax),
+            _buildDistBar('Double', dist['Double']!, total, rounds, Colors.blue.shade400, scaleMax),
+            _buildDistBar('Triple+', dist['Triple+']!, total, rounds, Colors.blue.shade900, scaleMax),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildDistBar(String label, int count, int total, int rounds, Color color) {
-    double pct = total > 0 ? (count / total).clamp(0.0, 1.0) : 0.0;
+  Widget _buildDistBar(String label, int count, int total, int rounds, Color color, double scaleMax) {
+    double barPct = scaleMax > 0 ? (count / scaleMax).clamp(0.0, 1.0) : 0.0;
+    double holePct = total > 0 ? (count / total).clamp(0.0, 1.0) : 0.0;
     double avgCount = rounds > 0 ? count / rounds : 0.0;
 
     return Padding(
@@ -570,7 +589,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
             child: LayoutBuilder(
               builder: (context, constraints) {
                 final double totalWidth = constraints.maxWidth;
-                final double barWidth = totalWidth * pct;
+                final double barWidth = totalWidth * barPct;
                 final double displayBarWidth = count > 0 ? (barWidth < 6.0 ? 6.0 : barWidth) : 0.0;
                 final String countText = '$count';
                 final double approxTextWidth = countText.length * 7.5 + 4;
@@ -622,7 +641,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
           SizedBox(
             width: 85,
             child: Text(
-              '${_formatAvg(avgCount)} (${(pct * 100).toStringAsFixed(0)}%)',
+              '${_formatAvg(avgCount)} (${(holePct * 100).toStringAsFixed(0)}%)',
               textAlign: TextAlign.right,
               style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
             ),

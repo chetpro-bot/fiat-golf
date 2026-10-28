@@ -1,6 +1,6 @@
 {
-  "version": "1.7.5",
-  "buildNumber": 62,
-  "releaseNotes": "스코어 분포도 그래프 바 옆에 총 횟수 표기",
-  "updatedAt": "2026-10-28T15:56:00Z"
+  "version": "1.7.6",
+  "buildNumber": 63,
+  "releaseNotes": "스코어 분포도 동적 스케일 적용 (최대 항목 75~80% 채움 최적화)",
+  "updatedAt": "2026-10-28T16:08:00Z"
 }
