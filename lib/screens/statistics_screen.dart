@@ -543,7 +543,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('스코어 분포도 (라운드당 평균)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const Text('스코어 분포도 (전체 / 라운드당 평균)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
             _buildDistBar('Eagle+', dist['Eagle+']!, total, rounds, Colors.red),
             _buildDistBar('Birdie', dist['Birdie']!, total, rounds, Colors.red.shade200),
@@ -560,11 +560,15 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   Widget _buildDistBar(String label, int count, int total, int rounds, Color color) {
     double pct = total > 0 ? count / total : 0;
     double avgCount = rounds > 0 ? count / rounds : 0;
+    final String subText = rounds > 1
+        ? '(${_formatAvg(avgCount)} · ${(pct * 100).toStringAsFixed(0)}%)'
+        : '(${(pct * 100).toStringAsFixed(0)}%)';
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         children: [
-          SizedBox(width: 60, child: Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500))),
+          SizedBox(width: 55, child: Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500))),
           Expanded(
             child: ClipRRect(
               borderRadius: BorderRadius.circular(6),
@@ -576,7 +580,37 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
               ),
             ),
           ),
-          SizedBox(width: 85, child: Text('${_formatAvg(avgCount)} (${(pct * 100).toStringAsFixed(0)}%)', textAlign: TextAlign.right, style: TextStyle(fontSize: 12, color: Colors.grey.shade700))),
+          const SizedBox(width: 8),
+          SizedBox(
+            width: 115,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerRight,
+              child: RichText(
+                textAlign: TextAlign.right,
+                text: TextSpan(
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                  children: [
+                    TextSpan(
+                      text: '$count개 ',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                        fontSize: 13,
+                      ),
+                    ),
+                    TextSpan(
+                      text: subText,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );

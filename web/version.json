@@ -1,6 +1,6 @@
 {
-  "version": "1.7.3",
-  "buildNumber": 60,
-  "releaseNotes": "선핸디 핸디캡 컨트롤 및 정산 금액 위치 정렬 개선",
-  "updatedAt": "2026-10-28T14:22:00Z"
+  "version": "1.7.4",
+  "buildNumber": 61,
+  "releaseNotes": "스코어 분포도 전체 개수 및 라운드당 평균/비중 표기 개선",
+  "updatedAt": "2026-10-28T15:48:00Z"
 }
