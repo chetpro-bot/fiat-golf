@@ -1000,7 +1000,12 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
                 
                 const Divider(),
                 // 3. 내기 이벤트 (니어리스트 - 파3 전용)
-                if (hole.par == 3) _buildBettingEvents(hole, compNames),
+                if (hole.par == 3) ...[
+                  _buildBettingEvents(hole, compNames),
+                  const Divider(),
+                ],
+                // 4. 홀 정산 결과 요약
+                _buildHoleSettlementSummary(start + index, hole, compNames),
               ],
             ],
           ),
@@ -1229,6 +1234,167 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildHoleSettlementSummary(int holeIndex, HoleData hole, List<String> compNames) {
+    if (hole.score == -99 || hole.companionScores.take(compNames.length).any((s) => s == -99)) {
+      return Container(
+        margin: const EdgeInsets.only(top: 8),
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+        decoration: BoxDecoration(
+          color: Colors.grey.withOpacity(0.06),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: const Row(
+          children: [
+            Icon(Icons.info_outline, size: 14, color: Colors.grey),
+            SizedBox(width: 6),
+            Text(
+              '모든 플레이어의 스코어를 입력하면 정산 요약이 표시됩니다.',
+              style: TextStyle(fontSize: 11, color: Colors.grey),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final playerNames = [AuthService().currentUser?.displayName ?? '나', ...compNames];
+    final prevHole = holeIndex > 0 ? _holes[holeIndex - 1] : null;
+    final result = BettingService.calculateHole(
+      hole,
+      _ojangConfig,
+      1 + compNames.length,
+      playerNames,
+      prevHole: prevHole,
+    );
+
+    return Container(
+      margin: const EdgeInsets.only(top: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1A3E3B).withOpacity(0.04),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFF1A3E3B).withOpacity(0.12)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.payments_outlined, size: 16, color: Color(0xFF27AE60)),
+              const SizedBox(width: 6),
+              const Text(
+                '홀 정산 요약',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1A3E3B),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: result.isBaepan ? Colors.orange.withOpacity(0.15) : Colors.grey.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  result.isBaepan ? '배판 2배' : '평판 1배',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: result.isBaepan ? Colors.deepOrange : Colors.grey.shade700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 6,
+            runSpacing: 4,
+            children: List.generate(playerNames.length, (pIdx) {
+              final gain = result.netGains[pIdx];
+              final isPos = gain > 0;
+              final isNeg = gain < 0;
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: isPos
+                      ? const Color(0xFF27AE60).withOpacity(0.08)
+                      : (isNeg ? Colors.red.withOpacity(0.08) : Colors.grey.withOpacity(0.08)),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  '${playerNames[pIdx]} ${isPos ? "+${NumberFormat('#,###').format(gain)}" : (isNeg ? NumberFormat('#,###').format(gain) : "0")}',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: isPos
+                        ? const Color(0xFF27AE60)
+                        : (isNeg ? Colors.redAccent : Colors.grey.shade700),
+                  ),
+                ),
+              );
+            }),
+          ),
+          const SizedBox(height: 8),
+          if (result.simplifiedTransfers.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Text(
+                '동타 - 주고받을 금액이 없습니다.',
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+              ),
+            )
+          else
+            ...result.simplifiedTransfers.map((t) {
+              return Container(
+                margin: const EdgeInsets.symmetric(vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
+                child: Row(
+                  children: [
+                    Text(
+                      t.fromName,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.redAccent,
+                      ),
+                    ),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 6),
+                      child: Icon(Icons.arrow_forward, size: 13, color: Colors.grey),
+                    ),
+                    Text(
+                      t.toName,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF27AE60),
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      '${NumberFormat('#,###').format(t.amount)}원',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1A3E3B),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+        ],
+      ),
     );
   }
 

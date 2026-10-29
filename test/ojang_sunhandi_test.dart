@@ -222,4 +222,72 @@ void main() {
       expect(totals[1], 4000);
     });
   });
+
+  group('상계 정산 송금 요약 (simplifiedTransfers) 검증', () {
+    test('사용자 요청 예시: A(파), B(보기), C(보기), D(더블보기) -> D가 A에게 4,000원 송금', () {
+      final config = OjangConfig(
+        enabled: true,
+        unitPrice: 1000,
+        ruleType: 1, // 선핸디
+        baepanTiming: 0,
+        baepanBirdie: false,
+        baepanThreeSame: false,
+        baepanTripleP45: false,
+        baepanDoubleP3: false,
+      );
+
+      // A(Par, 0), B(Bogey, 1), C(Bogey, 1), D(Double, 2)
+      final hole = HoleData(
+        holeNumber: 1,
+        par: 4,
+        score: 0,
+        putt: 2,
+        companionScores: [1, 1, 2],
+        companionPutts: [2, 2, 2],
+      );
+
+      final result = BettingService.calculateHole(
+        hole,
+        config,
+        4,
+        ['A', 'B', 'C', 'D'],
+      );
+
+      // 홀별 손익 확인
+      expect(result.netGains[0], 4000); // A: +4,000
+      expect(result.netGains[1], 0);    // B: 0
+      expect(result.netGains[2], 0);    // C: 0
+      expect(result.netGains[3], -4000); // D: -4,000
+
+      // 송금 요약: D -> A 4,000원 (단 1회)
+      expect(result.simplifiedTransfers.length, 1);
+      final t = result.simplifiedTransfers.first;
+      expect(t.fromName, 'D');
+      expect(t.toName, 'A');
+      expect(t.amount, 4000);
+    });
+
+    test('2명 승리, 2명 패배 시 최소 횟수 상계 송금', () {
+      final transfers = BettingService.simplifyTransfers(
+        [2000, 2000, -2000, -2000],
+        ['A', 'B', 'C', 'D'],
+      );
+
+      expect(transfers.length, 2);
+      expect(transfers.map((t) => t.amount).reduce((a, b) => a + b), 4000);
+      for (var t in transfers) {
+        expect(['C', 'D'].contains(t.fromName), true);
+        expect(['A', 'B'].contains(t.toName), true);
+      }
+    });
+
+    test('동타로 전원 0원일 때 송금 목록은 빈 리스트', () {
+      final transfers = BettingService.simplifyTransfers(
+        [0, 0, 0, 0],
+        ['A', 'B', 'C', 'D'],
+      );
+
+      expect(transfers.isEmpty, true);
+    });
+  });
 }

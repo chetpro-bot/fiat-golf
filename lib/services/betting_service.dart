@@ -1,14 +1,35 @@
 import '../models/round_model.dart';
 
+class TransferItem {
+  final int fromIndex;
+  final int toIndex;
+  final String fromName;
+  final String toName;
+  final int amount;
+
+  TransferItem({
+    required this.fromIndex,
+    required this.toIndex,
+    required this.fromName,
+    required this.toName,
+    required this.amount,
+  });
+
+  @override
+  String toString() => '$fromName → $toName: $amount원';
+}
+
 class BettingResult {
   final List<int> netGains; // 각 플레이어별 최종 손익 (0:유저, 1~3:동반자)
   final List<List<int>> transactions; // [from][to] 얼마를 주는지 매트릭스
   final bool isBaepan; // 해당 홀의 배판 적용 여부
+  final List<TransferItem> simplifiedTransfers; // 상계 정산 후 최종 송금 목록
 
   BettingResult({
     required this.netGains,
     required this.transactions,
     this.isBaepan = false,
+    this.simplifiedTransfers = const [],
   });
 }
 
@@ -265,11 +286,61 @@ class BettingService {
       }
     }
 
+    final simplifiedTransfers = simplifyTransfers(netGains, playerNames);
+
     return BettingResult(
       netGains: netGains,
       transactions: transactions,
       isBaepan: isBaepan,
+      simplifiedTransfers: simplifiedTransfers,
     );
+  }
+
+  /// 최종 손익(netGains)을 바탕으로 최소 횟수의 송금 내역으로 상계 정산
+  static List<TransferItem> simplifyTransfers(
+    List<int> netGains,
+    List<String> playerNames,
+  ) {
+    List<TransferItem> transfers = [];
+    List<int> balances = List.from(netGains);
+
+    while (true) {
+      int debtorIdx = -1;
+      int creditorIdx = -1;
+      int minBal = 0;
+      int maxBal = 0;
+
+      for (int i = 0; i < balances.length; i++) {
+        if (balances[i] < minBal) {
+          minBal = balances[i];
+          debtorIdx = i;
+        }
+        if (balances[i] > maxBal) {
+          maxBal = balances[i];
+          creditorIdx = i;
+        }
+      }
+
+      if (debtorIdx == -1 || creditorIdx == -1 || minBal == 0 || maxBal == 0) {
+        break;
+      }
+
+      int amount = (-minBal < maxBal) ? -minBal : maxBal;
+      if (amount <= 0) break;
+
+      transfers.add(TransferItem(
+        fromIndex: debtorIdx,
+        toIndex: creditorIdx,
+        fromName: debtorIdx < playerNames.length ? playerNames[debtorIdx] : '플레이어${debtorIdx + 1}',
+        toName: creditorIdx < playerNames.length ? playerNames[creditorIdx] : '플레이어${creditorIdx + 1}',
+        amount: amount,
+      ));
+
+      balances[debtorIdx] += amount;
+      balances[creditorIdx] -= amount;
+    }
+
+    return transfers;
   }
 
   /// 라운드 전체 누적 정산 계산

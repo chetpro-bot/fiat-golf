@@ -1,6 +1,6 @@
 {
-  "version": "1.7.8",
-  "buildNumber": 65,
-  "releaseNotes": "홀별 정산 금액 뱃지 표기 개선 (획득/손실/무승부 금액 전체 표기)",
-  "updatedAt": "2026-10-29T15:38:00Z"
+  "version": "1.7.9",
+  "buildNumber": 66,
+  "releaseNotes": "홀별 상계 정산 송금 요약 카드 추가 (최적 송금 안내)",
+  "updatedAt": "2026-10-29T15:53:00Z"
 }
