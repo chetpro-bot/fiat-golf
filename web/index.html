@@ -21,7 +21,7 @@
   <link rel="icon" type="image/png" href="favicon.png"/>
 
   <title>FIAT GOLF</title>
-  <link rel="manifest" href="manifest.json?v=20261029001">
+  <link rel="manifest" href="manifest.json?v=20261029002">
 
   <style>
     body {
@@ -75,7 +75,7 @@
     // ==========================================================
     // PWA 강제 업데이트 및 알림 최적화 (iOS 사파리 완벽 대응)
     // ==========================================================
-    var BUILD_TS = '20261029001';   // ← 배포할 때마다 이 값을 변경 (YYYYMMDD + 빌드번호)
+    var BUILD_TS = '20261029002';   // ← 배포할 때마다 이 값을 변경 (YYYYMMDD + 빌드번호)
     var TS_KEY   = 'fiat_golf_build_ts';
     var savedTs = localStorage.getItem(TS_KEY);
     
@@ -187,6 +187,6 @@
     flutter_bootstrap.js 뒤의 ?v= 쿼리스트링도 BUILD_TS 와 맞춰주세요.
     캐시된 index.html 이 있더라도 이 URL이 다르면 브라우저가 새 파일을 받습니다.
   -->
-  <script src="flutter_bootstrap.js?v=20261029001" async></script>
+  <script src="flutter_bootstrap.js?v=20261029002" async></script>
 </body>
 </html>

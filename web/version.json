@@ -1,6 +1,6 @@
 {
-  "version": "1.7.7",
-  "buildNumber": 64,
-  "releaseNotes": "오장 선핸디 룰 홀별 정산 개선 (평판: 타수차이*단가, 배판: 타수차이*단가*2)",
-  "updatedAt": "2026-10-29T15:30:00Z"
+  "version": "1.7.8",
+  "buildNumber": 65,
+  "releaseNotes": "홀별 정산 금액 뱃지 표기 개선 (획득/손실/무승부 금액 전체 표기)",
+  "updatedAt": "2026-10-29T15:38:00Z"
 }

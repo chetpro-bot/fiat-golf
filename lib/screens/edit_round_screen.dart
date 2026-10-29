@@ -1210,15 +1210,21 @@ class _EditRoundScreenState extends State<EditRoundScreen> with WidgetsBindingOb
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
           decoration: BoxDecoration(
-            color: myGain >= 0 ? const Color(0xFF27AE60).withOpacity(0.1) : Colors.red.withOpacity(0.1),
+            color: myGain > 0
+                ? const Color(0xFF27AE60).withOpacity(0.1)
+                : (myGain < 0 ? Colors.red.withOpacity(0.1) : Colors.grey.withOpacity(0.1)),
             borderRadius: BorderRadius.circular(20),
           ),
           child: Text(
-            myGain >= 0 ? '+' : NumberFormat('#,###').format(myGain),
+            myGain > 0
+                ? '+${NumberFormat('#,###').format(myGain)}'
+                : (myGain < 0 ? NumberFormat('#,###').format(myGain) : '0'),
             style: TextStyle(
               fontSize: 12, 
               fontWeight: FontWeight.bold, 
-              color: myGain >= 0 ? const Color(0xFF27AE60) : Colors.redAccent,
+              color: myGain > 0
+                  ? const Color(0xFF27AE60)
+                  : (myGain < 0 ? Colors.redAccent : Colors.grey),
             ),
           ),
         ),
