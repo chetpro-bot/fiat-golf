@@ -224,14 +224,30 @@ class BettingService {
           }
         }
 
+        int diff = sJ - sI;
         int finalAmount = 0;
-        if (isBaepan) {
-          // 배판: 타수 차이 + 2 * 보너스 타수
-          int diff = sJ - sI;
-          finalAmount = (diff + 2 * bonus) * config.unitPrice;
+
+        if (config.ruleType == 1) {
+          // [오장 선핸디]
+          // 선핸디 게임은 이미 시작하기 전에 핸디를 주고 받았으므로:
+          // 평판이면 (타수차이 + 보너스타수) * 단가
+          // 배판이면 (타수차이 + 보너스타수) * 단가 * 2
+          if (isBaepan) {
+            finalAmount = (diff + bonus) * config.unitPrice * 2;
+          } else {
+            finalAmount = (diff + bonus) * config.unitPrice;
+          }
         } else {
-          // 평판: 보너스 타수만 정산
-          finalAmount = bonus * config.unitPrice;
+          // [오장 후핸디]
+          // 후핸디는 18홀 종료 후 최종 타수차이를 정산하므로,
+          // 홀별 정산에서는 평판 시 보너스만, 배판 시 추가 1배 타수차이 + 2배 보너스를 정산함
+          if (isBaepan) {
+            // 배판: 타수 차이 + 2 * 보너스 타수
+            finalAmount = (diff + 2 * bonus) * config.unitPrice;
+          } else {
+            // 평판: 보너스 타수만 정산
+            finalAmount = bonus * config.unitPrice;
+          }
         }
 
         if (finalAmount > 0) {
